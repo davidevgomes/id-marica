@@ -1,0 +1,341 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+:root {
+  --font-display: 'Bricolage Grotesque', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-code: 'JetBrains Mono', ui-monospace, monospace;
+
+  --surface-ground: #F4F6F8;
+  --surface-paper: #FFFFFF;
+  --brand-teal: #0B3B49;
+  --brand-teal-deep: #072933;
+  --brand-aqua: #0E7490;
+  --brand-coral: #D93829;
+  --brand-coral-dark: #B52B1E;
+  --brand-amber: #E89B0C;
+  --ink-primary: #11222B;
+  --ink-muted: #52646D;
+  --line-subtle: #DCE3E8;
+  --status-ok: #156F48;
+  --status-lgpd: #7B245A;
+}
+
+@layer base {
+  html {
+    font-size: 16px;
+  }
+
+  html.a11y-lg {
+    font-size: 18px;
+  }
+
+  html.a11y-xl {
+    font-size: 20px;
+  }
+
+  html.a11y-contrast body {
+    background-color: #FFFFFF;
+    color: #000000;
+  }
+
+  html.a11y-contrast p,
+  html.a11y-contrast span,
+  html.a11y-contrast li {
+    color: inherit;
+  }
+
+  html.a11y-contrast button,
+  html.a11y-contrast a,
+  html.a11y-contrast input,
+  html.a11y-contrast select {
+    border-color: #000000 !important;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background-color: var(--surface-ground);
+    color: var(--ink-primary);
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .font-code {
+    font-family: var(--font-code);
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    outline: 2px solid var(--brand-coral);
+    outline-offset: 2px;
+  }
+}
+
+/* Purposeful Motion System (ease-out exponential, zero bounce) */
+@keyframes heroReveal {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes heroZoom {
+  from {
+    transform: scale(1.06);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes stepEnter {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scanline {
+  0% {
+    transform: translateY(-92px);
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateY(92px);
+    opacity: 0.25;
+  }
+}
+
+@keyframes drawCheck {
+  from {
+    stroke-dashoffset: 48;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes valuePop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes radarWave {
+  0% {
+    transform: scale(0.75);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+}
+
+.anim-hero-1 {
+  animation: heroReveal 650ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-hero-2 {
+  animation: heroReveal 650ms cubic-bezier(0.22, 1, 0.36, 1) 110ms both;
+}
+.anim-hero-3 {
+  animation: heroReveal 650ms cubic-bezier(0.22, 1, 0.36, 1) 210ms both;
+}
+.anim-hero-4 {
+  animation: heroReveal 650ms cubic-bezier(0.22, 1, 0.36, 1) 310ms both;
+}
+.anim-hero-photo {
+  animation: heroZoom 1600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-step {
+  animation: stepEnter 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-modal {
+  animation: modalIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-value-pop {
+  animation: valuePop 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.anim-scanline {
+  animation: scanline 2.1s ease-in-out infinite;
+}
+.anim-radar {
+  animation: radarWave 2.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+.anim-check {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 0;
+  animation: drawCheck 520ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
+}
+
+/* Smooth accordion expand/collapse without abrupt jump */
+.accordion-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.accordion-panel[data-open="true"] {
+  grid-template-rows: 1fr;
+}
+.accordion-inner {
+  overflow: hidden;
+}
+
+.reveal-block {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-block.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Leaflet map overrides */
+.leaflet-container {
+  font-family: var(--font-body) !important;
+  background: #D9E8EE !important;
+  z-index: 1;
+}
+
+.leaflet-interactive:focus {
+  outline: none !important;
+}
+
+.leaflet-tile-pane.osm-clean {
+  filter: saturate(0.74) contrast(0.96) brightness(1.03);
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 10px !important;
+  box-shadow: 0 12px 28px -6px rgba(11, 59, 73, 0.24) !important;
+  padding: 0 !important;
+  overflow: hidden;
+  border: 1px solid #DCE3E8;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: auto !important;
+}
+
+.leaflet-tooltip.bairro-tip {
+  background: #0B3B49;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 6px;
+  color: #FFFFFF;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 11px;
+  padding: 4px 8px;
+  box-shadow: 0 4px 12px rgba(11, 59, 73, 0.26);
+}
+
+.leaflet-tooltip.bairro-tip::before {
+  display: none;
+}
+
+.leaflet-tooltip.district-anchor {
+  background: rgba(11, 59, 73, 0.92);
+  border: 1px solid #E89B0C;
+  border-radius: 4px;
+  color: #FFFFFF;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  padding: 2px 8px;
+  box-shadow: 0 2px 8px rgba(11, 59, 73, 0.28);
+}
+
+.leaflet-tooltip.district-anchor::before {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-hero-1,
+  .anim-hero-2,
+  .anim-hero-3,
+  .anim-hero-4,
+  .anim-hero-photo,
+  .anim-step,
+  .anim-modal,
+  .anim-scanline,
+  .anim-radar,
+  .anim-value-pop,
+  .anim-check,
+  .animate-spin {
+    animation: none !important;
+  }
+  .reveal-block {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #C4D0D7;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8FA3AF;
+}

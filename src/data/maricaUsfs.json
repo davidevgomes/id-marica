@@ -1,0 +1,263 @@
+[
+  {
+    "id": "usf-1",
+    "name": "USF Central",
+    "address": "Rua Clímaco Pereira, 241, Centro",
+    "coords": [
+      -22.92369,
+      -42.81539
+    ]
+  },
+  {
+    "id": "usf-2",
+    "name": "USF Jardim Atlântico",
+    "address": "Rua Maximino de Souza, nº 11, Itaipuaçu",
+    "coords": [
+      -22.96856,
+      -42.95299
+    ]
+  },
+  {
+    "id": "usf-3",
+    "name": "USF Marinelândia",
+    "address": "Rua 09, quadra 15, Cordeirinho",
+    "coords": [
+      -22.95761,
+      -42.76821
+    ]
+  },
+  {
+    "id": "usf-4",
+    "name": "USF Chácara de Inoã",
+    "address": "Rodovia Amaral Peixoto, km 16, ao lado do Polo Mania, Inoã",
+    "coords": [
+      -22.91706,
+      -42.93073
+    ]
+  },
+  {
+    "id": "usf-5",
+    "name": "USF São José 2",
+    "address": "Estrada da Cachoeira, s/n",
+    "coords": [
+      -22.93588,
+      -42.89048
+    ]
+  },
+  {
+    "id": "usf-6",
+    "name": "USF Elenir Umbelino de Mello (Enfermeira Billu)",
+    "address": "Rua Ary Spindola, quadra A, lote 352, Flamengo",
+    "coords": [
+      -22.92112,
+      -42.81145
+    ]
+  },
+  {
+    "id": "usf-7",
+    "name": "USF Ponta Negra",
+    "address": "Estrada Um, s/n, Ponta Negra. Próximo à Ponte Senador Paulo Duque",
+    "coords": [
+      -22.95284,
+      -42.70044
+    ]
+  },
+  {
+    "id": "usf-8",
+    "name": "USF Bambuí",
+    "address": "Avenida do Contorno, s/n",
+    "coords": [
+      -22.93643,
+      -42.75594
+    ]
+  },
+  {
+    "id": "usf-9",
+    "name": "USF Inoã 2",
+    "address": "Rodovia Amaral Peixoto, km 14 (ao lado do DPO)",
+    "coords": [
+      -22.90519,
+      -42.93598
+    ]
+  },
+  {
+    "id": "usf-10",
+    "name": "USF Mumbuca",
+    "address": "Rua Hipólito de Abreu Rangel, s/n",
+    "coords": [
+      -22.91356,
+      -42.82788
+    ]
+  },
+  {
+    "id": "usf-11",
+    "name": "USF Santa Paula",
+    "address": "Estrada de Cassorotiba, s/n",
+    "coords": [
+      -22.89188,
+      -42.92684
+    ]
+  },
+  {
+    "id": "usf-12",
+    "name": "USF Inoã 1",
+    "address": "Rua Caio Figueiredo (travessa CIEP), s/n",
+    "coords": [
+      -22.94525,
+      -42.91551
+    ]
+  },
+  {
+    "id": "usf-13",
+    "name": "USF Inoã 1 (PSF)",
+    "address": "Rua B, Itaipuaçu",
+    "coords": [
+      -22.91916,
+      -42.93602
+    ]
+  },
+  {
+    "id": "usf-14",
+    "name": "USF Carlos Alberto Soares de Freitas",
+    "address": "Rua 23, quadra 29, lote 06, Bosque Fundo, Inoã",
+    "coords": [
+      -22.90834,
+      -42.92173
+    ]
+  },
+  {
+    "id": "usf-15",
+    "name": "USF Carlos Marighella",
+    "address": "Rua Áustria, s/n, condomínio MCMV de Itaipuaçu",
+    "coords": [
+      -22.94514,
+      -42.95464
+    ]
+  },
+  {
+    "id": "usf-16",
+    "name": "USF Santa Rita",
+    "address": "Rua Douglas Marques Rienti, nº 433, Itaipuaçu",
+    "coords": [
+      -22.96551,
+      -42.92698
+    ]
+  },
+  {
+    "id": "usf-17",
+    "name": "USF Recanto",
+    "address": "Rua Engenheiro Domingos Barbosa, s/n, Itaipuaçu",
+    "coords": [
+      -22.9653,
+      -43.01028
+    ]
+  },
+  {
+    "id": "usf-18",
+    "name": "USF São José 1",
+    "address": "Rua 18, s/n, loteamento Jardim Ouro Mar",
+    "coords": [
+      -22.9333,
+      -42.88343
+    ]
+  },
+  {
+    "id": "usf-19",
+    "name": "USF Retiro",
+    "address": "Estrada do Retiro, s/n",
+    "coords": [
+      -22.91169,
+      -42.86693
+    ]
+  },
+  {
+    "id": "usf-20",
+    "name": "USF Ponta Grossa",
+    "address": "Rua Maria Jose Dos Santos, 60-17, Itapeba",
+    "coords": [
+      -22.92123,
+      -42.856
+    ]
+  },
+  {
+    "id": "usf-21",
+    "name": "USF Bairro da Amizade",
+    "address": "Rua Eliete Rocha Santos (Rua 53), lote 31, quadra 91",
+    "coords": [
+      -22.93383,
+      -42.81647
+    ]
+  },
+  {
+    "id": "usf-22",
+    "name": "USF Guaratiba",
+    "address": "Estrada Beira da Lagoa, s/n",
+    "coords": [
+      -22.95865,
+      -42.78966
+    ]
+  },
+  {
+    "id": "usf-23",
+    "name": "USF Barra",
+    "address": "Rua Ernani Manoel Soares (antiga Rua 04), lote 03, quadra 0, Divineia",
+    "coords": [
+      -22.95478,
+      -42.8114
+    ]
+  },
+  {
+    "id": "usf-24",
+    "name": "USF Ubatiba",
+    "address": "Rua Gilma dos Santos Duarte, Ubatiba",
+    "coords": [
+      -22.88358,
+      -42.80223
+    ]
+  },
+  {
+    "id": "usf-25",
+    "name": "USF ACS Nathan da Silva Noronha Figueiredo (Saco das Flores)",
+    "address": "Rua 74, nº 1, Araçatiba",
+    "coords": [
+      -22.9363,
+      -42.82517
+    ]
+  },
+  {
+    "id": "usf-26",
+    "name": "USF Itaocaia Valley",
+    "address": "Avenida Tocantins, s/n, Itaocaia Valley, Itaipuaçu (próximo à Escola Municipal Rita Sampaio Cartaxo).",
+    "coords": [
+      -22.93185,
+      -42.96459
+    ]
+  },
+  {
+    "id": "usf-27",
+    "name": "USF Josefa Xavier Leal - São Bento da Lagoa",
+    "address": "Rua Alcides Francisco da Cruz, s/n, esquina com a Rua Dezessete de Novembro",
+    "coords": [
+      -22.95942,
+      -42.99477
+    ]
+  },
+  {
+    "id": "usf-28",
+    "name": "Unidade de Saúde Indígena Berta Ribeiro",
+    "address": "não localizada",
+    "coords": [
+      -22.94869,
+      -42.88845
+    ]
+  },
+  {
+    "id": "usf-29",
+    "name": "USF Espraiado",
+    "address": "Rua Gualberto Batista de Macedo s/n",
+    "coords": [
+      -22.8857,
+      -42.70588
+    ]
+  }
+]

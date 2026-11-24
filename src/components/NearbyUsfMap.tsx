@@ -160,33 +160,57 @@ export function NearbyUsfMap() {
     }
   }, [rankedUsfs, closestThree, userCoords, focusedUsfId]);
 
+  const applyUsfPosition = (pos: GeolocationPosition) => {
+    const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+    const distToMarica = calculateDistanceMeters(MARICA_CENTER, coords);
+    setUserCoords(coords);
+    setLocating(false);
+    if (distToMarica > 28000) {
+      setLocMessage(
+        `Localização obtida (${formatDistance(distToMarica)} do Centro de Maricá). Mostrando as Unidades de Saúde da Família mais próximas da sua posição.`
+      );
+    } else {
+      setLocMessage(
+        'Localização encontrada. Veja abaixo as Unidades de Saúde da Família mais perto de você.'
+      );
+    }
+  };
+
+  const handleUsfGeoError = (err: GeolocationPositionError) => {
+    setLocating(false);
+    if (err.code === err.PERMISSION_DENIED) {
+      setLocMessage(
+        'Permissão de localização bloqueada no navegador. Libere o acesso ou selecione seu distrito ao lado.'
+      );
+    } else {
+      setLocMessage(
+        'Não foi possível obter o GPS agora. Selecione seu distrito ao lado para ver as unidades mais próximas.'
+      );
+    }
+  };
+
   const handleFindNearMe = () => {
     setLocMessage(null);
     setFocusedUsfId(null);
     if (!navigator.geolocation) {
-      setLocMessage('Seu navegador não permite localização automática. Selecione seu distrito abaixo.');
+      setLocMessage('Seu navegador não permite localização automática. Selecione seu distrito ao lado.');
       return;
     }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-        const distToMarica = calculateDistanceMeters(MARICA_CENTER, coords);
-        setUserCoords(coords);
-        setLocating(false);
-        if (distToMarica > 28000) {
-          setLocMessage(
-            `Localização obtida (${formatDistance(distToMarica)} do Centro de Maricá). Mostrando as Unidades de Saúde da Família mais próximas da sua posição.`
-          );
-        } else {
-          setLocMessage('Localização encontrada. Veja abaixo as Unidades de Saúde da Família mais perto de você.');
+      applyUsfPosition,
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          handleUsfGeoError(err);
+          return;
         }
+        navigator.geolocation.getCurrentPosition(
+          applyUsfPosition,
+          handleUsfGeoError,
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+        );
       },
-      () => {
-        setLocating(false);
-        setLocMessage('Não foi possível acessar o GPS. Selecione seu distrito para ver as unidades mais próximas.');
-      },
-      { enableHighAccuracy: true, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 }
     );
   };
 

@@ -6,12 +6,14 @@ import { RAIO_TOLERANCIA_GPS_METROS } from '../engine/rulesEngine';
 interface GeofenceMiniMapProps {
   homeCoords: [number, number];
   captureCoords: [number, number] | null;
+  accuracyMeters?: number | null;
   isWithinRadius: boolean;
 }
 
 export function GeofenceMiniMap({
   homeCoords,
   captureCoords,
+  accuracyMeters,
   isWithinRadius,
 }: GeofenceMiniMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -91,6 +93,18 @@ export function GeofenceMiniMap({
 
     if (captureCoords) {
       const color = isWithinRadius ? '#156F48' : '#D93829';
+
+      if (accuracyMeters && accuracyMeters > 10 && accuracyMeters <= 1500) {
+        L.circle(captureCoords, {
+          radius: accuracyMeters,
+          color: '#0E7490',
+          weight: 1,
+          fillColor: '#0E7490',
+          fillOpacity: 0.1,
+          interactive: false,
+        }).addTo(layer);
+      }
+
       const gpsIcon = L.divIcon({
         className: '',
         html: `<div style="width:18px;height:18px;border-radius:999px;background:${color};border:3px solid #FFFFFF;box-shadow:0 0 0 6px ${isWithinRadius ? 'rgba(21,111,72,0.28)' : 'rgba(217,56,41,0.28)'};"></div>`,
@@ -116,14 +130,19 @@ export function GeofenceMiniMap({
     } else {
       map.setView(homeCoords, 16, { animate: true });
     }
-  }, [homeCoords, captureCoords, isWithinRadius]);
+  }, [homeCoords, captureCoords, accuracyMeters, isWithinRadius]);
 
   return (
-    <div className="isolate relative h-48 w-full overflow-hidden rounded-[8px] border border-[#DCE3E8] bg-[#D9E8EE]">
+    <div className="isolate relative h-52 w-full overflow-hidden rounded-[8px] border border-[#DCE3E8] bg-[#D9E8EE]">
       <div ref={containerRef} className="h-full w-full" />
-      <div className="pointer-events-none absolute bottom-2 left-2 z-[400] rounded-[4px] border border-[#DCE3E8] bg-white px-2.5 py-1 text-[11px] font-bold text-[#0B3B49]">
-        Área residencial validada (raio {RAIO_TOLERANCIA_GPS_METROS} m)
+      <div className="pointer-events-none absolute bottom-2 left-2 z-[400] rounded-[5px] border border-[#DCE3E8] bg-white px-2.5 py-1 text-[11px] font-bold text-[#0B3B49] shadow-xs">
+        Área residencial (raio {RAIO_TOLERANCIA_GPS_METROS} m)
       </div>
+      {accuracyMeters != null && accuracyMeters > 0 && (
+        <div className="pointer-events-none absolute right-2 top-2 z-[400] rounded-[5px] bg-[#0B3B49]/90 px-2 py-0.5 text-[10px] font-bold text-white tabular-nums">
+          Precisão ±{Math.round(accuracyMeters)} m
+        </div>
+      )}
     </div>
   );
 }

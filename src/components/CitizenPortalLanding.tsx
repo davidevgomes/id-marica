@@ -240,7 +240,7 @@ export function CitizenPortalLanding() {
       </header>
 
       {/* Bold Full-Bleed Editorial Hero */}
-      <section className="relative flex min-h-[88vh] items-center overflow-hidden bg-[#072933] pt-32 pb-20 text-white">
+      <section className="relative flex min-h-[88dvh] items-center overflow-hidden bg-[#072933] pt-32 pb-20 text-white">
         <img
           src={`${import.meta.env.BASE_URL}hero-marica.jpg`}
           alt="Moradora de Maricá confirmando seu cadastro pelo celular na varanda de casa"

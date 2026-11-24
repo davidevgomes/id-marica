@@ -79,6 +79,7 @@ export function CitizenProofOfLife() {
   // GPS Geofence & Automatic Instability Detection
   const [loadingGps, setLoadingGps] = useState(false);
   const [gpsCoords, setGpsCoords] = useState<[number, number] | null>(null);
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsDistance, setGpsDistance] = useState<number | null>(null);
   const [gpsModeLabel, setGpsModeLabel] = useState<string>('');
   const [instabilityNotice, setInstabilityNotice] = useState<string | null>(null);
@@ -99,6 +100,7 @@ export function CitizenProofOfLife() {
     setCapturedPhoto(null);
     setFacialResult(null);
     setGpsCoords(null);
+    setGpsAccuracy(null);
     setGpsDistance(null);
     setGpsModeLabel('');
     setInstabilityNotice(null);
@@ -197,60 +199,70 @@ export function CitizenProofOfLife() {
     }, 650);
   };
 
+  const applyRealPosition = (pos: GeolocationPosition, highAccuracyUsed: boolean) => {
+    const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+    const accuracy = pos.coords.accuracy ?? 0;
+    const dist = calculateDistanceMeters(family.coords, coords);
+    setGpsCoords(coords);
+    setGpsAccuracy(accuracy);
+    setGpsDistance(dist);
+    setGpsModeLabel(
+      highAccuracyUsed ? 'GPS real do aparelho' : 'Localização de rede do aparelho'
+    );
+    setLoadingGps(false);
+
+    // Automatic GPS instability or spoofing anomaly alert
+    if (accuracy === 0 || accuracy > 500) {
+      setMockGpsFlag(accuracy === 0);
+      setInstabilityNotice(
+        'Detectamos instabilidade ou baixa precisão no sinal de localização deste aparelho. Tente novamente próximo a uma janela aberta ou confirme presencialmente em uma Unidade de Saúde da Família.'
+      );
+    }
+  };
+
+  const handleGeolocationFailure = (err: GeolocationPositionError) => {
+    setLoadingGps(false);
+    if (err.code === err.PERMISSION_DENIED) {
+      setInstabilityNotice(
+        'Permissão de localização bloqueada no navegador. Libere o acesso à localização no ícone de cadeado da barra de endereço ou nas configurações do celular e toque em "Usar minha localização" novamente.'
+      );
+    } else if (err.code === err.TIMEOUT) {
+      setInstabilityNotice(
+        'O sinal de GPS demorou mais do que o esperado para responder. Aproxime-se de uma janela ou área aberta e toque em "Usar minha localização" novamente.'
+      );
+    } else {
+      setInstabilityNotice(
+        'Não foi possível obter o sinal de localização deste aparelho no momento. Verifique se o GPS está ligado no celular ou procure a Unidade de Saúde da Família mais próxima.'
+      );
+    }
+  };
+
   const requestRealGps = () => {
     setInstabilityNotice(null);
     setMockGpsFlag(false);
     if (!navigator.geolocation) {
       setInstabilityNotice(
-        'Instabilidade detectada no sinal de localização: este aparelho não enviou sinal de GPS. Tente novamente perto de uma janela ou escolha "Em casa" para testar a demonstração.'
+        'Este navegador ou aparelho não possui suporte a geolocalização. Utilize outro navegador atualizado ou realize a confirmação presencial em uma Unidade de Saúde da Família.'
       );
       return;
     }
     setLoadingGps(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-        const accuracy = pos.coords.accuracy ?? 0;
-        const dist = calculateDistanceMeters(family.coords, coords);
-        setGpsCoords(coords);
-        setGpsDistance(dist);
-        setGpsModeLabel('Localização real do aparelho');
-        setLoadingGps(false);
-
-        // Automatic GPS instability or spoofing anomaly alert (low precision or suspicious 0m accuracy)
-        if (accuracy > 150 || accuracy === 0) {
-          setMockGpsFlag(accuracy === 0);
-          setInstabilityNotice(
-            'Instabilidade detectada no sinal de localização (baixa precisão ou interferência no GPS). Aguarde alguns segundos próximo a uma janela ou realize a confirmação presencial em uma Unidade de Saúde da Família.'
-          );
+      (pos) => applyRealPosition(pos, true),
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          handleGeolocationFailure(err);
+          return;
         }
-      },
-      () => {
-        setLoadingGps(false);
-        setInstabilityNotice(
-          'Instabilidade detectada no sinal de localização: não foi possível confirmar o GPS automaticamente. Verifique a permissão de localização do celular ou utilize os cenários de demonstração abaixo.'
+        // Automatic fallback to standard/network geolocation when high-accuracy GPS times out indoors
+        navigator.geolocation.getCurrentPosition(
+          (fallbackPos) => applyRealPosition(fallbackPos, false),
+          (fallbackErr) => handleGeolocationFailure(fallbackErr),
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
         );
       },
-      { enableHighAccuracy: true, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 }
     );
-  };
-
-  const simulateHomeGps = () => {
-    setInstabilityNotice(null);
-    setMockGpsFlag(false);
-    const simulated: [number, number] = [family.coords[0] + 0.00012, family.coords[1] - 0.00011];
-    setGpsCoords(simulated);
-    setGpsDistance(calculateDistanceMeters(family.coords, simulated));
-    setGpsModeLabel('Localização dentro da residência');
-  };
-
-  const simulateFarGps = () => {
-    setInstabilityNotice(null);
-    setMockGpsFlag(false);
-    const simulated: [number, number] = [-22.8485, -43.0292];
-    setGpsCoords(simulated);
-    setGpsDistance(calculateDistanceMeters(family.coords, simulated));
-    setGpsModeLabel('Localização fora do município');
   };
 
   const handleFinishProof = () => {
@@ -419,10 +431,27 @@ export function CitizenProofOfLife() {
                 <div className="rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-6">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <div className="text-xs font-semibold text-[#52646D] sm:text-sm">
-                        Cadastro localizado
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-semibold text-[#52646D] sm:text-sm">
+                          Cadastro localizado
+                        </span>
+                        <span
+                          className={`rounded-[4px] px-2 py-0.5 text-[11px] font-bold ${
+                            family.daysUntilProofDue <= 0
+                              ? 'bg-[#FDE8E6] text-[#B52B1E]'
+                              : family.daysUntilProofDue <= 15
+                                ? 'bg-[#FEF3DC] text-[#8A5600]'
+                                : 'bg-[#E6F4ED] text-[#156F48]'
+                          }`}
+                        >
+                          {family.daysUntilProofDue <= 0
+                            ? 'Prova de vida pendente'
+                            : family.daysUntilProofDue <= 15
+                              ? `Vence em ${family.daysUntilProofDue} dias`
+                              : 'Cadastro em dia'}
+                        </span>
                       </div>
-                      <h3 className="font-display mt-1 text-2xl font-extrabold text-[#0B3B49]">
+                      <h3 className="font-display mt-1.5 text-2xl font-extrabold text-[#0B3B49]">
                         {family.titularName}
                       </h3>
                       <div className="mt-1.5 flex flex-wrap gap-5 text-sm text-[#52646D]">
@@ -669,10 +698,11 @@ export function CitizenProofOfLife() {
                       <GeofenceMiniMap
                         homeCoords={family.coords}
                         captureCoords={gpsCoords}
+                        accuracyMeters={gpsAccuracy}
                         isWithinRadius={isWithinRadius}
                       />
 
-                      {gpsDistance !== null && (
+                      {gpsDistance !== null ? (
                         <div
                           className={`mt-3 flex items-start gap-2 rounded-[8px] p-3 text-xs sm:text-sm ${
                             isWithinRadius
@@ -692,41 +722,32 @@ export function CitizenProofOfLife() {
                               : `${formatDistance(gpsDistance)} da residência (limite ${RAIO_TOLERANCIA_GPS_METROS} m).`}
                           </div>
                         </div>
+                      ) : (
+                        <p className="mt-3 text-xs leading-relaxed text-[#52646D]">
+                          Toque no botão abaixo e autorize o acesso à localização do seu aparelho
+                          para confirmar sua posição atual no mapa.
+                        </p>
                       )}
                     </div>
 
-                    <div className="mt-4 space-y-2.5">
+                    <div className="mt-4">
                       <button
                         type="button"
                         onClick={requestRealGps}
                         disabled={loadingGps}
-                        className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[8px] bg-[#0B3B49] px-4 py-3 text-sm font-extrabold text-white transition-all hover:bg-[#072933] active:scale-[0.98] cursor-pointer"
+                        className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[8px] bg-[#0B3B49] px-4 py-3 text-sm font-extrabold text-white transition-all hover:bg-[#072933] active:scale-[0.98] disabled:opacity-75 cursor-pointer"
                       >
                         {loadingGps ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <Crosshair className="h-4 w-4 text-[#E89B0C]" />
                         )}
-                        {loadingGps ? 'Verificando localização...' : 'Usar minha localização'}
+                        {loadingGps
+                          ? 'Obtendo sinal de GPS...'
+                          : gpsCoords
+                            ? 'Atualizar minha localização'
+                            : 'Usar minha localização'}
                       </button>
-
-                      {/* Clean 2-Scenario Presentation Bar (Em casa + Fora 14 km — NO Fake GPS button!) */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={simulateHomeGps}
-                          className="min-h-[44px] rounded-[8px] border border-[#156F48]/40 bg-[#E6F4ED] px-3 py-2 text-xs font-extrabold text-[#156F48] transition-colors hover:bg-[#D5ECE0] cursor-pointer sm:text-sm"
-                        >
-                          Em casa
-                        </button>
-                        <button
-                          type="button"
-                          onClick={simulateFarGps}
-                          className="min-h-[44px] rounded-[8px] border border-[#D93829]/40 bg-[#FDE8E6] px-3 py-2 text-xs font-extrabold text-[#B52B1E] transition-colors hover:bg-[#FAD6D2] cursor-pointer sm:text-sm"
-                        >
-                          Fora 14 km
-                        </button>
-                      </div>
                     </div>
                   </div>
                 </div>

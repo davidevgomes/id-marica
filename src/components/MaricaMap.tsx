@@ -1,6 +1,22 @@
 import L from 'leaflet';
-import { useEffect, useRef, useState } from 'react';
-import { Layers, Map as MapIcon, RotateCcw, Satellite, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Layers, Lock, Map as MapIcon, RotateCcw, Satellite, X } from 'lucide-react';
+import {
+  DISTRICT_BY_ID,
+  MARICA_BAIRROS_GEOJSON,
+  MARICA_CENTER,
+  MARICA_DEFAULT_ZOOM,
+  MARICA_DISTRICTS,
+  MARICA_REAL_USFS,
+} from '../data/maricaGeo';
+import {
+  computeSocioeconomicSummary,
+  formatCurrency,
+  getPerCapitaIncome,
+  normalizeSearch,
+  WORK_REGIME_LABELS,
+} from '../engine/analyticsEngine';
+import type { BeneficiaryRecord, DistrictId } from '../types/integra';
 import {
   LayerBairrosIcon,
   LayerHealthIcon,
@@ -8,50 +24,16 @@ import {
   LayerSchoolIcon,
   LayerTriangulationIcon,
 } from './CivicIcons';
-import {
-  calculateDistanceMeters,
-  DISTRICT_BY_ID,
-  FACILITY_BY_ID,
-  formatDistance,
-  MARICA_BAIRROS_GEOJSON,
-  MARICA_CENTER,
-  MARICA_DEFAULT_ZOOM,
-  MARICA_DISTRICTS,
-  MARICA_REAL_USFS,
-  PUBLIC_FACILITIES,
-} from '../data/maricaGeo';
-import { calculateFamilyMetrics, maskTitularName } from '../engine/rulesEngine';
-import type { DistrictId, FamilyRecord } from '../types/integra';
+
+export type ChoroplethMetric = 'CONCENTRACAO' | 'PER_CAPITA' | 'DESEMPREGO' | 'FORMALIZACAO';
 
 interface MaricaMapProps {
-  families: FamilyRecord[];
-  selectedFamilyId: string | null;
-  onSelectFamily: (id: string) => void;
+  beneficiaries: BeneficiaryRecord[];
+  selectedBeneficiaryId: string | null;
+  onSelectBeneficiary: (id: string) => void;
   selectedDistrict: DistrictId | 'ALL';
   onSelectDistrict: (district: DistrictId | 'ALL') => void;
-  telemetry: {
-    totalFamilies: number;
-    totalClt: number;
-    proofPct: string;
-    annualSavingsMil: string;
-    activeSearchCount: number;
-  };
-}
-
-function getFamilyPinStyle(family: FamilyRecord) {
-  if (family.sigiloEspacial) {
-    return { color: '#7B245A', ring: 'rgba(123, 36, 90, 0.28)', label: 'Sigilo LGPD' };
-  }
-  if (family.status === 'SUSPENSO_PREVENTIVO' || family.status === 'CANCELADO') {
-    return { color: '#C8102E', ring: 'rgba(200, 16, 46, 0.30)', label: 'Suspenso / Alerta' };
-  }
-  if (family.status === 'ALERTA_D15') {
-    return { color: '#D99100', ring: 'rgba(217, 145, 0, 0.30)', label: 'Prova de vida D-15' };
-  }
-  if (family.programs.includes('MUMBUCA_TRABALHO')) {
-    return { color: '#0F5C9E', ring: 'rgba(15, 92, 158, 0.28)', label: 'Mumbuca Trabalho' };
-  }
-  return { color: '#156F48', ring: 'rgba(21, 111, 72, 0.28)', label: 'Regular (RBC)' };
+  canViewIndividualPoints: boolean;
 }
 
 function titleCaseBairro(raw: string): string {
@@ -63,13 +45,26 @@ function titleCaseBairro(raw: string): string {
     .join(' ');
 }
 
+function getPinColor(b: BeneficiaryRecord): { bg: string; ring: string; tag: string } {
+  if (b.employmentStatus === 'DESEMPREGADO') {
+    return { bg: '#D93829', ring: 'rgba(217, 56, 41, 0.30)', tag: 'Desempregado' };
+  }
+  if (b.workRegime === 'CLT' || b.workRegime === 'ESTATUTARIO') {
+    return { bg: '#156F48', ring: 'rgba(21, 111, 72, 0.30)', tag: WORK_REGIME_LABELS[b.workRegime] };
+  }
+  if (b.workRegime === 'MEI') {
+    return { bg: '#0E7490', ring: 'rgba(14, 116, 144, 0.30)', tag: 'MEI' };
+  }
+  return { bg: '#E89B0C', ring: 'rgba(232, 155, 12, 0.30)', tag: WORK_REGIME_LABELS[b.workRegime] };
+}
+
 export function MaricaMap({
-  families,
-  selectedFamilyId,
-  onSelectFamily,
+  beneficiaries,
+  selectedBeneficiaryId,
+  onSelectBeneficiary,
   selectedDistrict,
   onSelectDistrict,
-  telemetry,
+  canViewIndividualPoints,
 }: MaricaMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -79,36 +74,60 @@ export function MaricaMap({
   const bairrosLayerRef = useRef<L.LayerGroup | null>(null);
   const anchorsLayerRef = useRef<L.LayerGroup | null>(null);
   const heatLayerRef = useRef<L.LayerGroup | null>(null);
-  const triangulationLayerRef = useRef<L.LayerGroup | null>(null);
-  const facilitiesLayerRef = useRef<L.LayerGroup | null>(null);
-  const familiesLayerRef = useRef<L.LayerGroup | null>(null);
+  const commutingLayerRef = useRef<L.LayerGroup | null>(null);
+  const usfsLayerRef = useRef<L.LayerGroup | null>(null);
+  const pointsLayerRef = useRef<L.LayerGroup | null>(null);
   const layersPopoverRef = useRef<HTMLDivElement | null>(null);
 
   const [basemap, setBasemap] = useState<'osm' | 'satellite'>('satellite');
   const [layersOpen, setLayersOpen] = useState(false);
   const [showBairros, setShowBairros] = useState(true);
+  const [choroplethMetric, setChoroplethMetric] = useState<ChoroplethMetric>('CONCENTRACAO');
+  const [showHeatmap, setShowHeatmap] = useState(true);
+  const [showIndividualPoints, setShowIndividualPoints] = useState(canViewIndividualPoints);
+  const [showCommuting, setShowCommuting] = useState(false);
   const [showUsfs, setShowUsfs] = useState(false);
-  const [showSchools, setShowSchools] = useState(false);
-  const [showHeatmap, setShowHeatmap] = useState(false);
-  const [showTriangulation, setShowTriangulation] = useState(true);
+
+  // Sync individual points layer with RBAC permission changes
+  useEffect(() => {
+    setShowIndividualPoints(canViewIndividualPoints);
+  }, [canViewIndividualPoints]);
 
   useEffect(() => {
     if (!layersOpen) return;
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setLayersOpen(false);
     };
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleOutside = (e: MouseEvent) => {
       if (layersPopoverRef.current && !layersPopoverRef.current.contains(e.target as Node)) {
         setLayersOpen(false);
       }
     };
     document.addEventListener('keydown', handleKey);
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handleOutside);
     return () => {
       document.removeEventListener('keydown', handleKey);
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('mousedown', handleOutside);
     };
   }, [layersOpen]);
+
+  const summary = useMemo(() => computeSocioeconomicSummary(beneficiaries), [beneficiaries]);
+
+  const bairroStatsMap = useMemo(() => {
+    const map = new Map<
+      string,
+      { count: number; avgPerCapita: number; unemploymentPct: number; formalPct: number }
+    >();
+    summary.neighborhoodStats.forEach((n) => {
+      map.set(normalizeSearch(n.neighborhood), {
+        count: n.count,
+        avgPerCapita: n.avgPerCapita,
+        unemploymentPct: n.unemploymentPct,
+        formalPct: n.formalPct,
+      });
+    });
+    return map;
+  }, [summary]);
 
   // Initialize Leaflet Map once
   useEffect(() => {
@@ -127,14 +146,14 @@ export function MaricaMap({
 
     bairrosLayerRef.current = L.layerGroup().addTo(map);
     heatLayerRef.current = L.layerGroup().addTo(map);
-    triangulationLayerRef.current = L.layerGroup().addTo(map);
-    facilitiesLayerRef.current = L.layerGroup().addTo(map);
+    commutingLayerRef.current = L.layerGroup().addTo(map);
+    usfsLayerRef.current = L.layerGroup().addTo(map);
     anchorsLayerRef.current = L.layerGroup().addTo(map);
-    familiesLayerRef.current = L.layerGroup().addTo(map);
+    pointsLayerRef.current = L.layerGroup().addTo(map);
 
     const geoBounds = L.geoJSON(MARICA_BAIRROS_GEOJSON).getBounds();
     fullBoundsRef.current = geoBounds;
-    map.fitBounds(geoBounds, { paddingTopLeft: [24, 64], paddingBottomRight: [24, 86] });
+    map.fitBounds(geoBounds, { paddingTopLeft: [24, 64], paddingBottomRight: [24, 92] });
 
     mapRef.current = map;
 
@@ -144,14 +163,12 @@ export function MaricaMap({
     };
   }, []);
 
-  // Switch Basemap (Mapa OSM / Satélite Esri)
+  // Switch Basemap (Satellite default / OSM Streets)
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
-    if (baseLayerRef.current) {
-      map.removeLayer(baseLayerRef.current);
-    }
+    if (baseLayerRef.current) map.removeLayer(baseLayerRef.current);
 
     const tilePane = map.getPane('tilePane');
     if (basemap === 'osm') {
@@ -172,7 +189,7 @@ export function MaricaMap({
     }
   }, [basemap]);
 
-  // Smooth flyTo when district filter changes
+  // Smooth flyTo on district change
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -181,8 +198,8 @@ export function MaricaMap({
       if (fullBoundsRef.current) {
         map.flyToBounds(fullBoundsRef.current, {
           paddingTopLeft: [24, 64],
-          paddingBottomRight: [24, 86],
-          duration: 0.7,
+          paddingBottomRight: [24, 92],
+          duration: 0.65,
         });
       }
       return;
@@ -198,13 +215,13 @@ export function MaricaMap({
     if (bounds.isValid()) {
       map.flyToBounds(bounds, {
         paddingTopLeft: [28, 64],
-        paddingBottomRight: [28, 86],
-        duration: 0.7,
+        paddingBottomRight: [28, 92],
+        duration: 0.65,
       });
     }
   }, [selectedDistrict]);
 
-  // Render Exact Official 50 Neighborhoods GeoJSON grouped by 5 Districts
+  // Choropleth 50 Neighborhoods Layer
   useEffect(() => {
     const layer = bairrosLayerRef.current;
     const anchors = anchorsLayerRef.current;
@@ -213,32 +230,66 @@ export function MaricaMap({
     anchors.clearLayers();
     if (!showBairros) return;
 
+    const getMetricFill = (
+      stats: { count: number; avgPerCapita: number; unemploymentPct: number; formalPct: number } | undefined,
+      fallbackColor: string
+    ) => {
+      if (!stats || stats.count === 0) return { color: fallbackColor, opacity: 0.08 };
+      if (choroplethMetric === 'CONCENTRACAO') {
+        if (stats.count >= 3) return { color: '#D93829', opacity: 0.44 };
+        if (stats.count === 2) return { color: '#E89B0C', opacity: 0.36 };
+        return { color: '#0E7490', opacity: 0.28 };
+      }
+      if (choroplethMetric === 'PER_CAPITA') {
+        if (stats.avgPerCapita <= 850) return { color: '#D93829', opacity: 0.46 };
+        if (stats.avgPerCapita <= 1250) return { color: '#E89B0C', opacity: 0.38 };
+        return { color: '#156F48', opacity: 0.36 };
+      }
+      if (choroplethMetric === 'DESEMPREGO') {
+        if (stats.unemploymentPct >= 40) return { color: '#D93829', opacity: 0.48 };
+        if (stats.unemploymentPct > 0) return { color: '#E89B0C', opacity: 0.34 };
+        return { color: '#156F48', opacity: 0.24 };
+      }
+      // FORMALIZACAO
+      if (stats.formalPct >= 60) return { color: '#156F48', opacity: 0.44 };
+      if (stats.formalPct > 0) return { color: '#0E7490', opacity: 0.34 };
+      return { color: '#E89B0C', opacity: 0.24 };
+    };
+
     const geoLayer = L.geoJSON(MARICA_BAIRROS_GEOJSON, {
       style: (feature) => {
         const dId = (feature?.properties?.districtId ?? 1) as DistrictId;
         const dist = DISTRICT_BY_ID[dId];
+        const nomeKey = normalizeSearch(feature?.properties?.bairro ?? '');
+        const stats = bairroStatsMap.get(nomeKey);
         const isFocused = selectedDistrict === dId;
         const isDimmed = selectedDistrict !== 'ALL' && !isFocused;
+        const fill = getMetricFill(stats, dist.fillColor);
         return {
           color: basemap === 'satellite' ? '#FFFFFF' : dist.color,
           weight: isFocused ? 1.8 : 1.1,
-          opacity: isDimmed ? 0.28 : 0.85,
-          fillColor: dist.fillColor,
-          fillOpacity: isFocused ? 0.34 : isDimmed ? 0.05 : basemap === 'satellite' ? 0.24 : 0.2,
+          opacity: isDimmed ? 0.25 : 0.85,
+          fillColor: fill.color,
+          fillOpacity: isDimmed ? 0.05 : fill.opacity,
         };
       },
       onEachFeature: (feature, poly) => {
         const dId = feature.properties.districtId as DistrictId;
         const dist = DISTRICT_BY_ID[dId];
         const nomeBairro = titleCaseBairro(feature.properties.bairro);
+        const stats = bairroStatsMap.get(normalizeSearch(feature.properties.bairro));
+
+        const metricLine = stats
+          ? `<div style="margin-top:3px;font-size:10px;color:#E89B0C;">${stats.count} cadastro(s) | Per capita ${formatCurrency(stats.avgPerCapita)} | CLT ${stats.formalPct}%</div>`
+          : `<div style="margin-top:2px;font-size:10px;opacity:0.75;">Sem registros no filtro atual</div>`;
 
         poly.bindTooltip(
-          `<div><strong>${nomeBairro}</strong></div><div style="opacity:0.85;font-size:10px;">${dist.name}</div>`,
+          `<div><strong>${nomeBairro}</strong> (${dist.shortName})</div>${metricLine}`,
           { sticky: true, className: 'bairro-tip' }
         );
 
         poly.on('mouseover', () => {
-          (poly as L.Path).setStyle({ weight: 2.5, fillOpacity: 0.42 });
+          (poly as L.Path).setStyle({ weight: 2.5, fillOpacity: 0.56 });
         });
         poly.on('mouseout', () => {
           geoLayer.resetStyle(poly);
@@ -251,7 +302,6 @@ export function MaricaMap({
 
     geoLayer.addTo(layer);
 
-    // Clean anchored district labels at non-overlapping positions
     MARICA_DISTRICTS.forEach((d) => {
       if (selectedDistrict !== 'ALL' && selectedDistrict !== d.id) return;
       L.marker(d.center, {
@@ -265,225 +315,151 @@ export function MaricaMap({
         })
         .addTo(anchors);
     });
-  }, [showBairros, selectedDistrict, basemap, onSelectDistrict]);
+  }, [showBairros, selectedDistrict, basemap, choroplethMetric, bairroStatsMap, onSelectDistrict]);
 
-  // Render Vulnerability Focus Circles
+  // Thermal Heatmap Concentration Layer (Aggregated, LGPD-safe)
   useEffect(() => {
     const layer = heatLayerRef.current;
     if (!layer) return;
     layer.clearLayers();
     if (!showHeatmap) return;
 
-    families.forEach((f) => {
-      if (f.sigiloEspacial) return;
-      const isAlert =
-        f.needsActiveSearch || f.status === 'SUSPENSO_PREVENTIVO' || f.status === 'ALERTA_D15';
-      L.circle(f.coords, {
-        radius: isAlert ? 1250 : 750,
+    beneficiaries.forEach((b) => {
+      const pc = getPerCapitaIncome(b);
+      const isLowIncome = pc <= 850 || b.employmentStatus === 'DESEMPREGADO';
+      // Outer soft halo + inner core for crisp concentration heatmap feel
+      L.circle(b.coords, {
+        radius: isLowIncome ? 1450 : 1050,
         stroke: false,
-        fillColor: isAlert ? '#C8102E' : '#E59A00',
-        fillOpacity: isAlert ? 0.24 : 0.12,
+        fillColor: isLowIncome ? '#D93829' : '#E89B0C',
+        fillOpacity: isLowIncome ? 0.16 : 0.11,
+        interactive: false,
+      }).addTo(layer);
+      L.circle(b.coords, {
+        radius: isLowIncome ? 620 : 480,
+        stroke: false,
+        fillColor: isLowIncome ? '#D93829' : '#0E7490',
+        fillOpacity: isLowIncome ? 0.24 : 0.16,
         interactive: false,
       }).addTo(layer);
     });
-  }, [showHeatmap, families]);
+  }, [showHeatmap, beneficiaries]);
 
-  // Render All 29 Real Maricá USFs + Municipal Schools
+  // Home -> Work Commuting Lines
   useEffect(() => {
-    const layer = facilitiesLayerRef.current;
+    const layer = commutingLayerRef.current;
     if (!layer) return;
     layer.clearLayers();
+    if (!showCommuting) return;
 
-    if (showUsfs) {
-      MARICA_REAL_USFS.forEach((u) => {
-        const icon = L.divIcon({
-          className: '',
-          html: `<div style="width:22px;height:22px;border-radius:4px;background:#0F5C9E;border:2px solid #fff;box-shadow:0 2px 6px rgba(12,27,51,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;line-height:1;">+</div>`,
-          iconSize: [22, 22],
-          iconAnchor: [11, 11],
-        });
-        L.marker(u.coords, { icon })
-          .bindPopup(
-            `<div style="padding:10px 12px;min-width:210px;">
-              <div style="font-size:11px;font-weight:700;color:#0F5C9E;">Rede Municipal de Saúde (e-SUS)</div>
-              <div style="font-size:13px;font-weight:800;color:#0C1B33;margin-top:2px;">${u.name.replace(/^USF\s+/i, 'Unidade de Saúde da Família ')}</div>
-              <div style="font-size:11px;color:#526071;margin-top:2px;">${u.address}</div>
-            </div>`
-          )
-          .addTo(layer);
-      });
-    }
-
-    if (showSchools) {
-      PUBLIC_FACILITIES.filter((f) => f.type === 'ESCOLA').forEach((fac) => {
-        const icon = L.divIcon({
-          className: '',
-          html: `<div style="width:22px;height:22px;border-radius:4px;background:#0C1B33;border:2px solid #F2A900;box-shadow:0 2px 6px rgba(12,27,51,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:10px;">E</div>`,
-          iconSize: [22, 22],
-          iconAnchor: [11, 11],
-        });
-        L.marker(fac.coords, { icon })
-          .bindPopup(
-            `<div style="padding:10px 12px;min-width:180px;">
-              <div style="font-size:11px;font-weight:700;color:#0C1B33;">e-Cidade Educação</div>
-              <div style="font-size:13px;font-weight:800;color:#0C1B33;margin-top:2px;">${fac.name}</div>
-              <div style="font-size:11px;color:#526071;margin-top:2px;">${fac.neighborhood}</div>
-            </div>`
-          )
-          .addTo(layer);
-      });
-    }
-  }, [showUsfs, showSchools]);
-
-  // Render Triangulation Lines & 100m Geofence for Selected Family
-  useEffect(() => {
-    const layer = triangulationLayerRef.current;
-    if (!layer) return;
-    layer.clearLayers();
-    if (!showTriangulation || !selectedFamilyId) return;
-
-    const fam = families.find((f) => f.id === selectedFamilyId);
-    if (!fam || fam.sigiloEspacial) return;
-
-    L.circle(fam.coords, {
-      radius: 100,
-      color: '#0C1B33',
-      weight: 2,
-      fillColor: '#F2A900',
-      fillOpacity: 0.22,
-    }).addTo(layer);
-
-    const ubs = FACILITY_BY_ID[fam.crossCheck.ubsId];
-    if (ubs) {
-      const dist = calculateDistanceMeters(fam.coords, ubs.coords);
-      L.polyline([fam.coords, ubs.coords], {
-        color: '#0F5C9E',
-        weight: 2.5,
-        dashArray: '6 5',
+    beneficiaries.forEach((b) => {
+      if (!b.workCoords) return;
+      L.polyline([b.coords, b.workCoords], {
+        color: '#E89B0C',
+        weight: 2.2,
+        dashArray: '5 5',
+        opacity: 0.85,
       })
-        .bindTooltip(`e-SUS: ${ubs.name} (${formatDistance(dist)})`, { sticky: true })
+        .bindTooltip(
+          `Deslocamento: ${b.neighborhood} para ${b.workLocationBairro ?? 'trabalho'}`,
+          { sticky: true, className: 'bairro-tip' }
+        )
         .addTo(layer);
+    });
+  }, [showCommuting, beneficiaries]);
 
-      L.marker(ubs.coords, {
-        icon: L.divIcon({
-          className: '',
-          html: `<div style="width:22px;height:22px;border-radius:4px;background:#0F5C9E;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.28);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;">+</div>`,
-          iconSize: [22, 22],
-          iconAnchor: [11, 11],
-        }),
-      })
-        .bindTooltip(`${ubs.name} (${formatDistance(dist)})`)
-        .addTo(layer);
-    }
-
-    if (fam.crossCheck.schoolId) {
-      const school = FACILITY_BY_ID[fam.crossCheck.schoolId];
-      if (school) {
-        const dist = calculateDistanceMeters(fam.coords, school.coords);
-        L.polyline([fam.coords, school.coords], {
-          color: '#0C1B33',
-          weight: 2.5,
-          dashArray: '4 6',
-        })
-          .bindTooltip(`e-Cidade: ${school.name} (${formatDistance(dist)})`, { sticky: true })
-          .addTo(layer);
-
-        L.marker(school.coords, {
-          icon: L.divIcon({
-            className: '',
-            html: `<div style="width:22px;height:22px;border-radius:4px;background:#0C1B33;border:2px solid #F2A900;box-shadow:0 2px 8px rgba(0,0,0,0.28);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:10px;">E</div>`,
-            iconSize: [22, 22],
-            iconAnchor: [11, 11],
-          }),
-        })
-          .bindTooltip(`${school.name} (${formatDistance(dist)})`)
-          .addTo(layer);
-      }
-    }
-  }, [showTriangulation, selectedFamilyId, families]);
-
-  // Render Family Pins
+  // 29 Real Maricá Unidades de Saúde da Família
   useEffect(() => {
-    const layer = familiesLayerRef.current;
+    const layer = usfsLayerRef.current;
     if (!layer) return;
     layer.clearLayers();
+    if (!showUsfs) return;
 
-    families.forEach((fam) => {
-      const style = getFamilyPinStyle(fam);
-      const isSelected = fam.id === selectedFamilyId;
-      const metrics = calculateFamilyMetrics(fam);
-      const district = DISTRICT_BY_ID[fam.districtId];
+    MARICA_REAL_USFS.forEach((u) => {
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="width:22px;height:22px;border-radius:5px;background:#D93829;border:2px solid #fff;box-shadow:0 2px 6px rgba(12,27,51,0.34);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;line-height:1;">+</div>`,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+      });
+      L.marker(u.coords, { icon })
+        .bindPopup(
+          `<div style="padding:10px 12px;min-width:210px;">
+            <div style="font-size:11px;font-weight:700;color:#D93829;">Rede Municipal de Saúde</div>
+            <div style="font-size:13px;font-weight:800;color:#0B3B49;margin-top:2px;">${u.name.replace(/^USF\s+/i, 'Unidade de Saúde da Família ')}</div>
+            <div style="font-size:11px;color:#52646D;margin-top:2px;">${u.address}</div>
+          </div>`
+        )
+        .addTo(layer);
+    });
+  }, [showUsfs]);
 
-      const displayCoords: [number, number] = fam.sigiloEspacial
-        ? [district.center[0] + 0.006, district.center[1] - 0.005]
-        : fam.coords;
+  // Individual Residential Points (STRICTLY gated by RBAC `canViewIndividualPoints`)
+  useEffect(() => {
+    const layer = pointsLayerRef.current;
+    if (!layer) return;
+    layer.clearLayers();
+    if (!canViewIndividualPoints || !showIndividualPoints) return;
 
-      if (fam.sigiloEspacial) {
-        L.circle(displayCoords, {
-          radius: 950,
-          color: '#7B245A',
-          weight: 1.75,
-          dashArray: '5 5',
-          fillColor: '#7B245A',
-          fillOpacity: 0.14,
-          interactive: false,
-        }).addTo(layer);
-      }
-
-      const size = isSelected ? 32 : 22;
-      const innerMark = fam.sigiloEspacial
-        ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`
-        : `${fam.members.length}`;
+    beneficiaries.forEach((b) => {
+      const pin = getPinColor(b);
+      const isSelected = b.id === selectedBeneficiaryId;
+      const size = isSelected ? 30 : 20;
 
       const icon = L.divIcon({
         className: '',
-        html: `<div style="width:${size}px;height:${size}px;border-radius:999px;background:${style.color};border:2.5px solid #fff;box-shadow:0 0 0 ${isSelected ? '6px' : '3px'} ${style.ring}, 0 4px 10px rgba(12,27,51,0.32);display:flex;align-items:center;justify-content:center;color:#fff;font-size:${isSelected ? '12px' : '10px'};font-weight:800;">${innerMark}</div>`,
+        html: `<div style="width:${size}px;height:${size}px;border-radius:999px;background:${pin.bg};border:2.5px solid #fff;box-shadow:0 0 0 ${isSelected ? '6px' : '3px'} ${pin.ring}, 0 4px 10px rgba(11,59,73,0.34);display:flex;align-items:center;justify-content:center;color:#fff;font-size:${isSelected ? '11px' : '9px'};font-weight:800;">${b.householdSize}</div>`,
         iconSize: [size, size],
         iconAnchor: [size / 2, size / 2],
       });
 
-      const marker = L.marker(displayCoords, {
+      const marker = L.marker(b.coords, {
         icon,
-        zIndexOffset: isSelected ? 900 : 100,
+        zIndexOffset: isSelected ? 900 : 120,
       });
 
-      const displayName = maskTitularName(fam.titularName, fam.sigiloEspacial);
       marker.bindTooltip(
-        `<div style="font-weight:700;font-size:12px;">${displayName}</div>
-         <div style="font-size:11px;color:#CBD5E1;">${district.shortName}, M$ ${metrics.totalMumbucasMonthly}/mês (${style.label})</div>`,
+        `<div style="font-weight:700;font-size:12px;">${b.fullName}</div>
+         <div style="font-size:11px;color:#CBD5E1;">${b.neighborhood} | ${pin.tag} | Per capita ${formatCurrency(getPerCapitaIncome(b))}</div>`,
         { direction: 'top', offset: [0, -14], className: 'bairro-tip' }
       );
 
-      marker.on('click', () => onSelectFamily(fam.id));
+      marker.on('click', () => onSelectBeneficiary(b.id));
       marker.addTo(layer);
     });
-  }, [families, selectedFamilyId, onSelectFamily]);
+  }, [
+    beneficiaries,
+    selectedBeneficiaryId,
+    canViewIndividualPoints,
+    showIndividualPoints,
+    onSelectBeneficiary,
+  ]);
 
   const handleResetView = () => {
     onSelectDistrict('ALL');
     if (fullBoundsRef.current) {
       mapRef.current?.flyToBounds(fullBoundsRef.current, {
         paddingTopLeft: [24, 64],
-        paddingBottomRight: [24, 86],
-        duration: 0.7,
+        paddingBottomRight: [24, 92],
+        duration: 0.65,
       });
     }
   };
 
   const activeLayersCount =
     (showBairros ? 1 : 0) +
-    (showTriangulation ? 1 : 0) +
-    (showUsfs ? 1 : 0) +
-    (showSchools ? 1 : 0) +
-    (showHeatmap ? 1 : 0);
+    (showHeatmap ? 1 : 0) +
+    (canViewIndividualPoints && showIndividualPoints ? 1 : 0) +
+    (showCommuting ? 1 : 0) +
+    (showUsfs ? 1 : 0);
 
   return (
     <div className="isolate relative h-[480px] w-full bg-[#0E2832] sm:h-[540px] lg:h-[calc(100dvh-62px)]">
       <div ref={containerRef} className="h-full w-full" />
 
-      {/* Top Floating Bar: Horizontal-Scroll Districts (Mobile Safe) + Basemap & Layers Controls */}
+      {/* Top Floating Bar */}
       <div className="pointer-events-none absolute inset-x-3 top-3 z-[400] flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between">
-        {/* Single-row scrollable district filter strip */}
+        {/* Horizontal-scroll 5-district strip */}
         <div className="pointer-events-auto no-scrollbar flex max-w-full flex-nowrap items-center gap-1 overflow-x-auto rounded-[10px] border border-[#DCE3E8] bg-white p-1 shadow-md">
           <button
             type="button"
@@ -518,7 +494,7 @@ export function MaricaMap({
           })}
         </div>
 
-        {/* Basemap Switch + Multi-Tone Layers Popover (Anchored Left on Mobile, Right on Desktop) */}
+        {/* Basemap Toggle + Responsive Multi-Tone Layers Popover */}
         <div
           ref={layersPopoverRef}
           className="pointer-events-auto relative flex shrink-0 items-center gap-1.5"
@@ -527,7 +503,7 @@ export function MaricaMap({
             type="button"
             onClick={() => setBasemap((b) => (b === 'osm' ? 'satellite' : 'osm'))}
             aria-label={basemap === 'satellite' ? 'Alternar para mapa de ruas' : 'Alternar para imagem de satélite'}
-            className="flex min-h-[38px] items-center gap-1.5 rounded-[9px] border border-white/20 bg-[#0B3B49] px-3 py-1.5 text-xs font-bold text-white shadow-md transition-colors hover:bg-[#072933] cursor-pointer"
+            className="flex min-h-[38px] items-center gap-1.5 rounded-[9px] border border-white/20 bg-[#0B3B49] px-3 py-1.5 text-xs font-bold text-white shadow-md hover:bg-[#072933] cursor-pointer"
           >
             {basemap === 'satellite' ? (
               <>
@@ -568,68 +544,108 @@ export function MaricaMap({
             </button>
           )}
 
-          {/* Responsive Layers Popover — zero viewport clipping on 390px mobile */}
           {layersOpen && (
             <div
               id="map-layers-popover"
               role="region"
               aria-label="Camadas cartográficas do mapa"
-              className="anim-modal absolute left-0 top-11 w-[min(20rem,calc(100vw-24px))] rounded-[12px] border border-[#DCE3E8] bg-white p-2.5 shadow-2xl sm:left-auto sm:right-0"
+              className="anim-modal absolute left-0 top-11 w-[min(21rem,calc(100vw-24px))] rounded-[12px] border border-[#DCE3E8] bg-white p-3 shadow-2xl sm:left-auto sm:right-0"
             >
-              <div className="flex items-center justify-between border-b border-[#EDF1F4] px-2 pb-2 pt-0.5">
+              <div className="flex items-center justify-between border-b border-[#EDF1F4] pb-2">
                 <div>
                   <div className="font-display text-xs font-extrabold text-[#0B3B49]">
-                    Camadas do território
+                    Camadas e análises territoriais
                   </div>
                   <div className="text-[11px] text-[#52646D]">
-                    Ative dados sobre a imagem de {basemap === 'satellite' ? 'satélite' : 'ruas'}
+                    Base {basemap === 'satellite' ? 'Satélite Esri' : 'Ruas OpenStreetMap'}
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setLayersOpen(false)}
                   aria-label="Fechar camadas"
-                  className="rounded-[6px] p-1 text-[#52646D] hover:bg-[#F4F6F8] hover:text-[#0B3B49] cursor-pointer"
+                  className="rounded-[6px] p-1 text-[#52646D] hover:bg-[#F4F6F8] cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <div className="mt-2 space-y-1">
+
+              {/* Choropleth Metric Selector */}
+              <div className="mt-2.5">
+                <div className="mb-1.5 text-[11px] font-bold text-[#0B3B49]">
+                  Colorir bairros por indicador
+                </div>
+                <div className="grid grid-cols-2 gap-1">
+                  {(
+                    [
+                      { id: 'CONCENTRACAO', label: 'Concentração' },
+                      { id: 'PER_CAPITA', label: 'Renda per capita' },
+                      { id: 'DESEMPREGO', label: 'Desemprego' },
+                      { id: 'FORMALIZACAO', label: 'Vínculo CLT' },
+                    ] as { id: ChoroplethMetric; label: string }[]
+                  ).map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        setShowBairros(true);
+                        setChoroplethMetric(m.id);
+                      }}
+                      className={`rounded-[6px] px-2 py-1.5 text-[11px] font-bold transition-colors cursor-pointer ${
+                        choroplethMetric === m.id && showBairros
+                          ? 'bg-[#0B3B49] text-white'
+                          : 'bg-[#F4F6F8] text-[#52646D] hover:text-[#0B3B49]'
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-2.5 space-y-1 border-t border-[#EDF1F4] pt-2">
                 {[
                   {
-                    label: '50 bairros oficiais',
-                    desc: 'Delimitação dos 5 distritos (IBGE)',
+                    label: '50 bairros (agregado)',
+                    desc: 'Comparação territorial por indicador',
                     active: showBairros,
+                    disabled: false,
                     toggle: () => setShowBairros((v) => !v),
                     icon: LayerBairrosIcon,
                   },
                   {
-                    label: 'Triangulação domiciliar',
-                    desc: 'Raio de 100 m, saúde e escola',
-                    active: showTriangulation,
-                    toggle: () => setShowTriangulation((v) => !v),
+                    label: 'Mapa de calor',
+                    desc: 'Concentração e baixa renda (LGPD)',
+                    active: showHeatmap,
+                    disabled: false,
+                    toggle: () => setShowHeatmap((v) => !v),
+                    icon: LayerHeatIcon,
+                  },
+                  {
+                    label: 'Pontos residenciais exatos',
+                    desc: canViewIndividualPoints
+                      ? 'Liberado para perfil autorizado'
+                      : 'Restrito pela LGPD no modo Analista',
+                    active: canViewIndividualPoints && showIndividualPoints,
+                    disabled: !canViewIndividualPoints,
+                    toggle: () => canViewIndividualPoints && setShowIndividualPoints((v) => !v),
                     icon: LayerTriangulationIcon,
                   },
                   {
-                    label: 'Unidades de Saúde (29)',
-                    desc: 'Postos da rede e-SUS de Maricá',
-                    active: showUsfs,
-                    toggle: () => setShowUsfs((v) => !v),
-                    icon: LayerHealthIcon,
-                  },
-                  {
-                    label: 'Escolas municipais',
-                    desc: 'Rede pública integrada ao e-Cidade',
-                    active: showSchools,
-                    toggle: () => setShowSchools((v) => !v),
+                    label: 'Deslocamento casa e trabalho',
+                    desc: 'Fluxos territoriais de emprego',
+                    active: showCommuting,
+                    disabled: false,
+                    toggle: () => setShowCommuting((v) => !v),
                     icon: LayerSchoolIcon,
                   },
                   {
-                    label: 'Foco de vulnerabilidade',
-                    desc: 'Mancha de alertas e busca ativa',
-                    active: showHeatmap,
-                    toggle: () => setShowHeatmap((v) => !v),
-                    icon: LayerHeatIcon,
+                    label: 'Unidades de Saúde (29)',
+                    desc: 'Rede municipal de atendimento',
+                    active: showUsfs,
+                    disabled: false,
+                    toggle: () => setShowUsfs((v) => !v),
+                    icon: LayerHealthIcon,
                   },
                 ].map((layer) => {
                   const Icon = layer.icon;
@@ -639,22 +655,26 @@ export function MaricaMap({
                       key={layer.label}
                       role="switch"
                       aria-checked={layer.active}
+                      disabled={layer.disabled}
                       onClick={layer.toggle}
-                      className={`flex w-full items-center justify-between gap-2.5 rounded-[8px] px-2.5 py-2 text-left transition-colors cursor-pointer ${
-                        layer.active
-                          ? 'bg-[#EDF4F6] text-[#0B3B49]'
-                          : 'text-[#52646D] hover:bg-[#F8FAFB]'
+                      className={`flex w-full items-center justify-between gap-2 rounded-[8px] px-2 py-1.5 text-left transition-colors ${
+                        layer.disabled
+                          ? 'cursor-not-allowed opacity-65'
+                          : layer.active
+                            ? 'bg-[#EDF4F6] cursor-pointer'
+                            : 'hover:bg-[#F8FAFB] cursor-pointer'
                       }`}
                     >
-                      <span className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex min-w-0 items-center gap-2">
                         <span className="shrink-0">
                           <Icon />
                         </span>
                         <span className="min-w-0">
-                          <span className="block truncate text-xs font-bold text-[#0B3B49]">
+                          <span className="flex items-center gap-1 truncate text-xs font-bold text-[#0B3B49]">
                             {layer.label}
+                            {layer.disabled && <Lock className="h-3 w-3 text-[#B52B1E]" />}
                           </span>
-                          <span className="block truncate text-[11px] font-normal text-[#52646D]">
+                          <span className="block truncate text-[11px] text-[#52646D]">
                             {layer.desc}
                           </span>
                         </span>
@@ -666,7 +686,7 @@ export function MaricaMap({
                         }`}
                       >
                         <span
-                          className={`block h-4 w-4 rounded-full bg-white shadow-xs transition-transform ${
+                          className={`block h-4 w-4 rounded-full bg-white transition-transform ${
                             layer.active ? 'translate-x-4' : 'translate-x-0'
                           }`}
                         />
@@ -680,39 +700,34 @@ export function MaricaMap({
         </div>
       </div>
 
-      {/* Bottom-Left Telemetry Strip */}
-      <div className="pointer-events-auto absolute bottom-3 left-3 right-14 z-[400] hidden max-w-[660px] items-center justify-between gap-4 rounded-[8px] border border-white/15 bg-[#0B3B49] px-4 py-2.5 text-white shadow-lg sm:flex">
+      {/* Bottom-Left Live Cohort Telemetry Strip */}
+      <div className="pointer-events-auto absolute bottom-3 left-3 right-14 z-[400] hidden max-w-[700px] items-center justify-between gap-4 rounded-[9px] border border-white/15 bg-[#0B3B49] px-4 py-2.5 text-white shadow-lg sm:flex">
         <div>
           <div className="font-display text-lg font-extrabold leading-none text-[#E89B0C] tabular-nums">
-            {telemetry.totalFamilies.toLocaleString('pt-BR')}
+            {summary.total}
           </div>
-          <div className="mt-0.5 text-[11px] text-[#C2D6DC]">Famílias mapeadas</div>
-        </div>
-        <span className="h-7 w-px bg-white/15" />
-        <div>
-          <div
-            key={telemetry.totalClt}
-            className="anim-value-pop font-display text-lg font-extrabold leading-none text-[#E89B0C] tabular-nums"
-          >
-            {telemetry.totalClt.toLocaleString('pt-BR')}
-          </div>
-          <div className="mt-0.5 text-[11px] text-[#C2D6DC]">Mumbuca Trabalho</div>
+          <div className="mt-0.5 text-[11px] text-[#C2D6DC]">Cadastrados no filtro</div>
         </div>
         <span className="h-7 w-px bg-white/15" />
         <div>
           <div className="font-display text-lg font-extrabold leading-none text-white tabular-nums">
-            {telemetry.proofPct}%
+            {formatCurrency(summary.avgPerCapitaIncome)}
           </div>
-          <div className="mt-0.5 text-[11px] text-[#C2D6DC]">Prova de vida em dia</div>
+          <div className="mt-0.5 text-[11px] text-[#C2D6DC]">Per capita médio</div>
+        </div>
+        <span className="h-7 w-px bg-white/15" />
+        <div>
+          <div className="font-display text-lg font-extrabold leading-none text-[#E89B0C] tabular-nums">
+            {summary.formalRatePct}%
+          </div>
+          <div className="mt-0.5 text-[11px] text-[#C2D6DC]">Vínculo formal (CLT/Est.)</div>
         </div>
         <span className="h-7 w-px bg-white/15" />
         <div>
           <div className="font-display text-lg font-extrabold leading-none text-white tabular-nums">
-            R$ {telemetry.annualSavingsMil} mi
+            {summary.unemploymentRatePct}%
           </div>
-          <div className="mt-0.5 text-[11px] text-[#C2D6DC]">
-            Saneamento anual ({telemetry.activeSearchCount} p/ CRAS)
-          </div>
+          <div className="mt-0.5 text-[11px] text-[#C2D6DC]">Desemprego na base</div>
         </div>
       </div>
     </div>

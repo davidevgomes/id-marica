@@ -18,9 +18,8 @@ export function PortalFooter() {
               subtitle="Prefeitura Municipal de Maricá"
             />
             <p className="max-w-md text-sm leading-relaxed text-[#C2D6DC]">
-              Portal oficial do programa Integra Maricá para atualização cadastral,
-              georreferenciamento social e prova de vida trimestral dos beneficiários de
-              transferência de renda do município.
+              Plataforma oficial do Integra Maricá para cadastro socioeconômico, atualização
+              trimestral e inteligência territorial voltada ao planejamento de políticas públicas.
             </p>
           </div>
 
@@ -50,7 +49,7 @@ export function PortalFooter() {
               </li>
               <li>
                 <a href="#cadastro" className="transition-colors hover:text-[#E89B0C]">
-                  Cadastro e prova de vida
+                  Cadastro e atualização trimestral
                 </a>
               </li>
               <li>

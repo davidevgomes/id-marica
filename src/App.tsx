@@ -1,17 +1,21 @@
 import { useState } from 'react';
+import { AdminLoginGate } from './components/AdminLoginGate';
 import { CitizenPortalLanding } from './components/CitizenPortalLanding';
-import { CrasAndIntegrationsView } from './components/CrasAndIntegrationsView';
+import { CombinedQueryView } from './components/CombinedQueryView';
 import { Header } from './components/Header';
-import { MayorDashboard } from './components/MayorDashboard';
+import { IndicatorsEvolutionView } from './components/IndicatorsEvolutionView';
+import { LgpdSecurityView } from './components/LgpdSecurityView';
 import { QrModal } from './components/QrModal';
+import { ReportsExportView } from './components/ReportsExportView';
+import { TerritoryMapView } from './components/TerritoryMapView';
 import { ToastContainer } from './components/ToastContainer';
 import { IntegraProvider, useIntegra } from './context/IntegraContext';
 
-function IntegraShell() {
-  const { surface, viewMode } = useIntegra();
+function AppShell() {
+  const { portalMode, managementView, authSession } = useIntegra();
   const [qrOpen, setQrOpen] = useState(false);
 
-  if (surface === 'portal') {
+  if (portalMode === 'portal') {
     return (
       <>
         <CitizenPortalLanding />
@@ -20,16 +24,27 @@ function IntegraShell() {
     );
   }
 
+  if (!authSession) {
+    return (
+      <>
+        <AdminLoginGate />
+        <ToastContainer />
+      </>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-[#F4F6F8]">
+    <div className="min-h-screen bg-[#F4F6F8] text-[#11222B]">
       <Header onOpenQr={() => setQrOpen(true)} />
       <main>
-        {viewMode === 'mapa' && <MayorDashboard />}
-        {viewMode === 'busca_ativa' && <CrasAndIntegrationsView mode="busca_ativa" />}
-        {viewMode === 'integracoes' && <CrasAndIntegrationsView mode="integracoes" />}
+        {managementView === 'mapa' && <TerritoryMapView />}
+        {managementView === 'consultas' && <CombinedQueryView />}
+        {managementView === 'indicadores' && <IndicatorsEvolutionView />}
+        {managementView === 'relatorios' && <ReportsExportView />}
+        {managementView === 'lgpd' && <LgpdSecurityView />}
       </main>
-      <ToastContainer />
       <QrModal open={qrOpen} onClose={() => setQrOpen(false)} />
+      <ToastContainer />
     </div>
   );
 }
@@ -37,7 +52,7 @@ function IntegraShell() {
 export default function App() {
   return (
     <IntegraProvider>
-      <IntegraShell />
+      <AppShell />
     </IntegraProvider>
   );
 }

@@ -1,7 +1,8 @@
 import L from 'leaflet';
 import { useEffect, useRef } from 'react';
 import { MARICA_BAIRROS_GEOJSON } from '../data/maricaGeo';
-import { RAIO_TOLERANCIA_GPS_METROS } from '../engine/rulesEngine';
+
+const RAIO_RESIDENCIAL_METROS = 100;
 
 interface GeofenceMiniMapProps {
   homeCoords: [number, number];
@@ -63,7 +64,7 @@ export function GeofenceMiniMap({
 
     // 100m Home Geofence Ring
     L.circle(homeCoords, {
-      radius: RAIO_TOLERANCIA_GPS_METROS,
+      radius: RAIO_RESIDENCIAL_METROS,
       color: '#156F48',
       weight: 2,
       fillColor: '#156F48',
@@ -136,7 +137,7 @@ export function GeofenceMiniMap({
     <div className="isolate relative h-52 w-full overflow-hidden rounded-[8px] border border-[#DCE3E8] bg-[#D9E8EE]">
       <div ref={containerRef} className="h-full w-full" />
       <div className="pointer-events-none absolute bottom-2 left-2 z-[400] rounded-[5px] border border-[#DCE3E8] bg-white px-2.5 py-1 text-[11px] font-bold text-[#0B3B49] shadow-xs">
-        Área residencial (raio {RAIO_TOLERANCIA_GPS_METROS} m)
+        Referência residencial (raio {RAIO_RESIDENCIAL_METROS} m)
       </div>
       {accuracyMeters != null && accuracyMeters > 0 && (
         <div className="pointer-events-none absolute right-2 top-2 z-[400] rounded-[5px] bg-[#0B3B49]/90 px-2 py-0.5 text-[10px] font-bold text-white tabular-nums">

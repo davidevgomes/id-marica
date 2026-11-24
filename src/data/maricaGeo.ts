@@ -25,6 +25,46 @@ export interface RealUsf {
 
 export const MARICA_REAL_USFS: RealUsf[] = usfsJson as RealUsf[];
 
+export interface OfficialBairroInfo {
+  name: string;
+  rawName: string;
+  districtId: DistrictId;
+  center: [number, number];
+}
+
+function titleCaseBairro(raw: string): string {
+  const small = new Set(['de', 'da', 'do', 'das', 'dos']);
+  return raw
+    .toLowerCase()
+    .split(' ')
+    .map((w, i) => (i > 0 && small.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(' ');
+}
+
+export const OFFICIAL_BAIRROS: OfficialBairroInfo[] = MARICA_BAIRROS_GEOJSON.features
+  .map((f) => {
+    const geom = f.geometry;
+    const ring =
+      geom.type === 'Polygon'
+        ? geom.coordinates[0]
+        : geom.type === 'MultiPolygon'
+          ? geom.coordinates[0][0]
+          : [];
+    let cx = -42.825;
+    let cy = -22.922;
+    if (ring.length > 0) {
+      cx = ring.reduce((s, p) => s + p[0], 0) / ring.length;
+      cy = ring.reduce((s, p) => s + p[1], 0) / ring.length;
+    }
+    return {
+      name: titleCaseBairro(f.properties.bairro),
+      rawName: f.properties.bairro,
+      districtId: f.properties.districtId,
+      center: [Number(cy.toFixed(5)), Number(cx.toFixed(5))] as [number, number],
+    };
+  })
+  .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
 /**
  * 5 Setores Territoriais Oficiais de Maricá-RJ.
  * Os polígonos exatos dos 50 bairros oficiais vêm de maricaBairros.json (base IBGE 2022 Maricá).

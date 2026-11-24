@@ -1,5 +1,164 @@
 export type DistrictId = 1 | 2 | 3 | 4 | 5;
 
+export type AppPortalMode = 'portal' | 'gestao';
+
+export type ManagementView =
+  | 'mapa'
+  | 'consultas'
+  | 'indicadores'
+  | 'relatorios'
+  | 'lgpd';
+
+export type UserRole = 'ANALISTA_AGREGADO' | 'AUDITOR_LGPD' | 'EQUIPE_CAMPO';
+
+export interface AuthSession {
+  userName: string;
+  userEmail: string;
+  role: UserRole;
+  department: string;
+  loggedInAt: string;
+}
+
+export type RegistrationStatus =
+  | 'ATUALIZADO'
+  | 'PROXIMO_VENCIMENTO'
+  | 'VENCIDO'
+  | 'PENDENTE_VALIDACAO';
+
+export type EmploymentStatus =
+  | 'EMPREGADO'
+  | 'DESEMPREGADO'
+  | 'AUTONOMO'
+  | 'INFORMAL'
+  | 'APOSENTADO'
+  | 'ESTUDANTE';
+
+export type WorkRegime =
+  | 'CLT'
+  | 'ESTATUTARIO'
+  | 'MEI'
+  | 'INFORMAL'
+  | 'SEM_VINCULO'
+  | 'APOSENTADO';
+
+export type HousingType = 'PROPRIA' | 'ALUGADA' | 'CEDIDA' | 'FINANCIADA' | 'OUTRA';
+
+export type IncomeTrend = 'AUMENTO' | 'REDUCAO' | 'ESTAVEL';
+
+export interface SocialProgramBenefit {
+  name: string;
+  monthlyValue: number;
+}
+
+export interface BeneficiaryDocuments {
+  idDocAttached: boolean;
+  idDocName?: string;
+  residenceProofAttached: boolean;
+  residenceProofName?: string;
+  facialVerified: boolean;
+  facialConsentLgpd: boolean;
+  facialVerifiedAt?: string;
+}
+
+export interface BeneficiaryHistoryEntry {
+  id: string;
+  date: string; // YYYY-MM-DD
+  cycleLabel: string; // e.g., "Mai/2026", "Ago/2026", "Nov/2026"
+  employmentStatus: EmploymentStatus;
+  workRegime: WorkRegime;
+  profession: string;
+  individualIncome: number;
+  householdTotalIncome: number;
+  perCapitaIncome: number;
+  socialBenefitsTotal: number;
+  note: string;
+  updatedBy: string;
+}
+
+export interface BeneficiaryRecord {
+  id: string;
+  cpf: string;
+  fullName: string;
+  birthDate: string; // YYYY-MM-DD
+  gender: 'Feminino' | 'Masculino' | 'Outro' | 'Prefiro não informar';
+  maritalStatus: 'Solteiro(a)' | 'Casado(a)' | 'União estável' | 'Divorciado(a)' | 'Viúvo(a)';
+  education:
+    | 'Fundamental incompleto'
+    | 'Fundamental completo'
+    | 'Médio incompleto'
+    | 'Médio completo'
+    | 'Superior incompleto'
+    | 'Superior completo'
+    | 'Pós-graduação';
+  phone: string;
+  email: string;
+  householdSize: number;
+  dependentsCount: number;
+  familyComposition: string;
+
+  // Profissional e econômico
+  profession: string;
+  employmentStatus: EmploymentStatus;
+  workRegime: WorkRegime;
+  employerName: string;
+  economicSector: string;
+  individualIncome: number; // R$ / mês
+  householdTotalIncome: number; // R$ / mês (total do domicílio incluindo salários e outras rendas)
+  incomeContributorsCount: number;
+  otherIncomeSources: number;
+  socialPrograms: SocialProgramBenefit[];
+
+  // Habitacional e territorial
+  address: string;
+  neighborhood: string;
+  districtId: DistrictId;
+  cep: string;
+  coords: [number, number];
+  housingType: HousingType;
+  rentValue: number;
+  workLocationBairro?: string;
+  workCoords?: [number, number];
+
+  // Documentos e biometria
+  documents: BeneficiaryDocuments;
+
+  // Validade cadastral (ciclo de 90 dias — nunca suspende benefício automaticamente)
+  registeredAt: string; // YYYY-MM-DD
+  lastUpdatedAt: string; // YYYY-MM-DD
+  nextDueDate: string; // YYYY-MM-DD
+  pendingValidation: boolean;
+  capturedOffline?: boolean;
+
+  // Histórico longitudinal
+  history: BeneficiaryHistoryEntry[];
+}
+
+export interface BeneficiaryFilterState {
+  search: string;
+  districtId: DistrictId | 'ALL';
+  neighborhood: string; // 'ALL' or exact neighborhood
+  registrationStatus: RegistrationStatus | 'ALL';
+  employmentStatus: EmploymentStatus | 'ALL';
+  workRegime: WorkRegime | 'ALL';
+  economicSector: string; // 'ALL' or sector
+  programName: string; // 'ALL' or program name
+  maxIndividualIncomeSm: 'ALL' | '0' | '1' | '2' | '3';
+  minHouseholdSize: 'ALL' | '2' | '3' | '4' | '5';
+  multiProgramOnly: boolean;
+  incomeTrend: IncomeTrend | 'ALL';
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  actorName: string;
+  actorRole: UserRole;
+  action: string;
+  resource: string;
+  legalBasis: string;
+  severity: 'info' | 'success' | 'warning';
+}
+
 export interface DistrictInfo {
   id: DistrictId;
   name: string;
@@ -8,158 +167,24 @@ export interface DistrictInfo {
   fillColor: string;
   center: [number, number];
   neighborhoods: string[];
-  /** Approximate realistic macro count of active families in this district */
   macroFamilies: number;
   macroMumbucaTrabalho: number;
   macroPendingProof: number;
   polygon: [number, number][];
 }
 
-export type FacilityType = 'UBS' | 'ESCOLA' | 'CRAS';
-
 export interface PublicFacility {
   id: string;
   name: string;
-  type: FacilityType;
+  type: 'UBS' | 'ESCOLA' | 'CRAS';
   districtId: DistrictId;
   coords: [number, number];
   neighborhood: string;
 }
 
-export type ProgramType =
-  | 'RBC'
-  | 'MUMBUCA_TRABALHO'
-  | 'AUX_CUIDAR'
-  | 'RECOMECAR'
-  | 'INDIGENA'
-  | 'BOLSA_FAMILIA'
-  | 'BPC';
-
-export type TetoFaixa = 'A' | 'B' | 'C' | 'EMANCIPADO';
-
-export type BenefitStatus = 'ATIVO' | 'ALERTA_D15' | 'SUSPENSO_PREVENTIVO' | 'CANCELADO';
-
-export type ReguaFase = 0 | 1 | 2 | 3 | 4;
-
-export type OccupationalStatus =
-  | 'DESEMPREGADO'
-  | 'INFORMAL'
-  | 'CLT_MUMBUCA'
-  | 'IMPEDIDO_LEGAL'
-  | 'ESTUDANTE';
-
-export interface FamilyMember {
+export interface ToastMessage {
   id: string;
-  name: string;
-  role: 'TITULAR' | 'CONJUGE' | 'DEPENDENTE';
-  age: number;
-  cpf: string;
-  occupationalStatus: OccupationalStatus;
-  cltSalary: number; // in R$
-  employerCnpj?: string;
-  employerName?: string;
-  isIdosoOrPcd?: boolean;
+  title: string;
+  description: string;
+  tone: 'success' | 'warning' | 'danger' | 'info';
 }
-
-export interface ProofOfLifeRecord {
-  id: string;
-  cycle: string; // e.g. '2026-Q4'
-  date: string; // ISO string
-  status: 'APROVADO' | 'REPROVADO_DISTANCIA' | 'REPROVADO_BIOMETRIA' | 'PENDENTE';
-  livenessScore: number;
-  facialMatchScore: number;
-  distanceMeters: number;
-  mockLocationDetected: boolean;
-  channel: 'APP_FACIAL_GPS' | 'PRESENCIAL_CRAS_UBS' | 'VISITA_IN_LOCO';
-  captureCoords?: [number, number];
-}
-
-export interface CrossCheckInfo {
-  cadUnicoUpdatedAt: string;
-  cadUnicoStatus: 'REGULAR' | 'DESATUALIZADO';
-  eSocialLastEvent: string;
-  ubsId: string;
-  ubsLastVisit: string;
-  schoolId?: string;
-  schoolAttendancePct?: number;
-  territorialDivergence: boolean;
-  divergenceReason?: string;
-}
-
-export interface FamilyRecord {
-  id: string;
-  cadUnicoCode: string;
-  nis: string;
-  titularName: string;
-  titularCpf: string;
-  districtId: DistrictId;
-  neighborhood: string;
-  address: string;
-  coords: [number, number];
-  /** LGPD Spatial Obfuscation for Recomeçar sem Violência */
-  sigiloEspacial: boolean;
-  humanitarianToken?: string;
-  members: FamilyMember[];
-  programs: ProgramType[];
-  federalBenefitsTotal: number; // Bolsa Família + BPC in R$
-  municipalExtraBenefits: number; // Auxílio Cuidar, Recomeçar, Indígena in Mumbucas/R$
-  status: BenefitStatus;
-  reguaFase: ReguaFase;
-  daysUntilProofDue: number; // negative means overdue
-  lastProofOfLife: ProofOfLifeRecord;
-  crossCheck: CrossCheckInfo;
-  needsActiveSearch: boolean;
-  activeSearchPriority?: 'ALTA' | 'MEDIA' | 'BAIXA';
-  activeSearchReason?: string;
-  assistedEligible?: boolean; // Idoso / PcD eligible for CRAS/UBS assisted proof
-  lastCrasVisit?: string;
-  notes?: string;
-}
-
-export interface CalculatedFamilyMetrics {
-  cltCount: number;
-  cltIncomeTotal: number;
-  rbcDependentQuotaPct: 100 | 50 | 0;
-  mumbucaTrabalhoTotal: number;
-  rbcTotal: number;
-  totalMumbucasMonthly: number;
-  totalHouseholdIncome: number; // Salários + benefícios municipais + federais
-  perCapitaIncome: number;
-  faixaTeto: TetoFaixa;
-  tetoLimitReais: number | null; // null for Faixa C (humanitarian exception)
-  exceedsEmancipationCap: boolean;
-  mumbucaSplit: {
-    livre80: number;
-    territorio10: number;
-    producaoLocal10: number;
-  };
-}
-
-export interface IntegrationLogEvent {
-  id: string;
-  timestamp: string;
-  source: 'CADUNICO' | 'ESOCIAL_CAGED' | 'ECIDADE_EDUC' | 'ESUS_SAUDE' | 'PROVA_VIDA' | 'CRAS_CAMPO';
-  familyId: string;
-  familyName: string;
-  districtId: DistrictId;
-  eventType: string;
-  automatedAction: string;
-  severity: 'info' | 'success' | 'warning' | 'danger';
-}
-
-export interface MumbucaWebhookEvent {
-  id: string;
-  timestamp: string;
-  familyId: string;
-  titularMasked: string;
-  command: 'PROVISIONAR_FOLHA' | 'ATUALIZAR_STATUS' | 'REATIVAR_CONTA' | 'SUSPENDER_PREVENTIVO' | 'CANCELAR_BENEFICIO';
-  statusConta: 'ATIVO' | 'SUSPENSO_PREVENTIVO' | 'CANCELADO';
-  idTerritorio: DistrictId;
-  valorMensalMumbucas: number;
-  motivo: string;
-  httpStatus: 200;
-  latencyMs: number;
-}
-
-export type AppSurface = 'portal' | 'gestao';
-export type AppViewMode = 'mapa' | 'busca_ativa' | 'integracoes';

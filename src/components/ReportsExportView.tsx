@@ -198,7 +198,7 @@ export function ReportsExportView() {
           <div>
             <div className="flex items-center gap-2 text-xs font-bold text-[#0E7490]">
               <FileText className="h-4 w-4" />
-              Prévia do Relatório Consolidado — Integra Maricá
+              Prévia do Relatório Consolidado: ID Maricá
             </div>
             <h2 className="font-display mt-1 text-xl font-extrabold text-[#0B3B49]">
               Síntese Socioeconômica da População Cadastrada

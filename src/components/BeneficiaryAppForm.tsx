@@ -4,21 +4,35 @@ import {
   Briefcase,
   Camera,
   ChevronRight,
+  Cpu,
   Crosshair,
   FileText,
+  GraduationCap,
   History,
   Home,
   Loader2,
   Paperclip,
+  Plus,
   ScanFace,
   Search,
   ShieldCheck,
+  Trash2,
   UserPlus,
+  Users,
   WifiOff,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useIntegra } from '../context/IntegraContext';
-import { DISTRICT_BY_ID, OFFICIAL_BAIRROS } from '../data/maricaGeo';
+import {
+  GOVERNMENT_POLICIES_CATALOG,
+  MARICA_CRAS_UNITS,
+  MARICA_MUNICIPAL_SCHOOLS,
+  PASSAPORTE_COURSES,
+  PASSAPORTE_UNIVERSITIES,
+  suggestPoliciesWithAI,
+  type AiPolicySuggestion,
+} from '../data/maricaCatalog';
+import { DISTRICT_BY_ID, expandUsfName, MARICA_REAL_USFS, OFFICIAL_BAIRROS } from '../data/maricaGeo';
 import {
   calculateAge,
   ECONOMIC_SECTORS,
@@ -27,7 +41,6 @@ import {
   formatDateBr,
   getRegistrationStatus,
   HOUSING_LABELS,
-  SOCIAL_PROGRAM_OPTIONS,
   STATUS_LABELS,
   WORK_REGIME_LABELS,
 } from '../engine/analyticsEngine';
@@ -35,7 +48,9 @@ import type {
   BeneficiaryRecord,
   DistrictId,
   EmploymentStatus,
+  HouseholdMemberLink,
   HousingType,
+  PolicySelfDeclaration,
   SocialProgramBenefit,
   WorkRegime,
 } from '../types/integra';
@@ -50,20 +65,11 @@ import { GeofenceMiniMap } from './GeofenceMiniMap';
 type FormStep = 1 | 2 | 3 | 4 | 5;
 
 const MODULES: { n: 1 | 2 | 3 | 4; title: string; subtitle: string }[] = [
-  { n: 1, title: 'Dados pessoais', subtitle: 'CPF, contato e família' },
-  { n: 2, title: 'Profissional e renda', subtitle: 'Trabalho, renda e programas' },
-  { n: 3, title: 'Moradia e território', subtitle: 'Endereço, bairro e GPS' },
+  { n: 1, title: 'Dados e moradores', subtitle: 'CPF do titular e da casa' },
+  { n: 2, title: 'Renda e políticas', subtitle: 'Trabalho, IA e autodeclaração' },
+  { n: 3, title: 'Moradia e GPS', subtitle: 'Bairro, aluguel e mapa' },
   { n: 4, title: 'Documentos e envio', subtitle: 'Anexos, biometria e histórico' },
 ];
-
-const DEFAULT_PROGRAM_VALUES: Record<string, number> = {
-  'Renda Básica de Cidadania (Mumbuca)': 460,
-  'Mumbuca Trabalho': 350,
-  'Bolsa Família': 600,
-  'Auxílio Aluguel': 500,
-  'Passaporte Universitário': 680,
-  'BPC / LOAS': 1518,
-};
 
 function formatCpfInput(value: string): string {
   if (/[a-zA-Z]/.test(value)) return value;
@@ -72,6 +78,26 @@ function formatCpfInput(value: string): string {
   if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
   if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+}
+
+function defaultDeclaration(): PolicySelfDeclaration {
+  return {
+    cadUnicoRegistered: true,
+    nis: '',
+    ubsRegistered: true,
+    ubsName: expandUsfName(MARICA_REAL_USFS[0].name),
+    crasRegistered: true,
+    crasName: MARICA_CRAS_UNITS[0].name,
+    publicSchoolStudent: false,
+    schoolName: MARICA_MUNICIPAL_SCHOOLS[0].name,
+    studentScope: 'Dependente(s)',
+    passaporteUniversitario: false,
+    universityName: PASSAPORTE_UNIVERSITIES[0],
+    universityCourse: PASSAPORTE_COURSES[0],
+    declaredPolicies: ['Renda Básica de Cidadania (Mumbuca)'],
+    crossCheckStatus: 'AGUARDANDO_CRUZAMENTO',
+    crossCheckNotes: 'Autodeclaração aguardando cruzamento automático com bases oficiais.',
+  };
 }
 
 function createEmptyDraft() {
@@ -86,16 +112,18 @@ function createEmptyDraft() {
     education: 'Médio completo' as BeneficiaryRecord['education'],
     phone: '',
     email: '',
-    householdSize: 3,
-    dependentsCount: 1,
-    familyComposition: 'Titular e dependentes',
+    householdSize: 1,
+    dependentsCount: 0,
+    familyComposition: 'Titular',
+    householdMembers: [] as HouseholdMemberLink[],
+    selfDeclaration: defaultDeclaration(),
     profession: '',
     employmentStatus: 'EMPREGADO' as EmploymentStatus,
     workRegime: 'CLT' as WorkRegime,
     employerName: '',
     economicSector: 'Comércio',
     individualIncome: 1518,
-    householdTotalIncome: 2200,
+    householdTotalIncome: 1518,
     incomeContributorsCount: 1,
     otherIncomeSources: 0,
     socialPrograms: [
@@ -126,6 +154,7 @@ function createEmptyDraft() {
 type BeneficiaryDraft = ReturnType<typeof createEmptyDraft>;
 
 function recordToDraft(b: BeneficiaryRecord): BeneficiaryDraft {
+  const members = (b.householdMembers ?? []).map((m) => ({ ...m }));
   return {
     id: b.id as string | undefined,
     cpf: b.cpf,
@@ -136,9 +165,13 @@ function recordToDraft(b: BeneficiaryRecord): BeneficiaryDraft {
     education: b.education,
     phone: b.phone,
     email: b.email,
-    householdSize: b.householdSize,
+    householdSize: 1 + members.length,
     dependentsCount: b.dependentsCount,
     familyComposition: b.familyComposition,
+    householdMembers: members,
+    selfDeclaration: b.selfDeclaration
+      ? { ...b.selfDeclaration, declaredPolicies: [...b.selfDeclaration.declaredPolicies] }
+      : defaultDeclaration(),
     profession: b.profession,
     employmentStatus: b.employmentStatus,
     workRegime: b.workRegime,
@@ -177,6 +210,11 @@ export function BeneficiaryAppForm() {
   const [updateNote, setUpdateNote] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
+  // AI Policy Assistant state
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<AiPolicySuggestion[] | null>(null);
+
   // Real GPS 2-stage state
   const [loadingGps, setLoadingGps] = useState(false);
   const [gpsCapturedCoords, setGpsCapturedCoords] = useState<[number, number] | null>(null);
@@ -192,7 +230,6 @@ export function BeneficiaryAppForm() {
   const [analyzingFace, setAnalyzingFace] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
 
-  // Confirmation receipt state
   const [receipt, setReceipt] = useState<{
     savedId: string;
     queuedOffline: boolean;
@@ -217,6 +254,7 @@ export function BeneficiaryAppForm() {
     setLookupInput(b.cpf);
     setLookupFeedback(null);
     setFormError(null);
+    setAiSuggestions(null);
     setGpsCapturedCoords(null);
     setGpsAccuracy(null);
     setGpsNotice(null);
@@ -230,8 +268,9 @@ export function BeneficiaryAppForm() {
     setLoadedRecord(null);
     setDraft(createEmptyDraft());
     setLookupInput('');
-    setLookupFeedback('Novo cadastro individual iniciado. Preencha os 4 módulos abaixo.');
+    setLookupFeedback('Novo cadastro individual iniciado no ID Maricá.');
     setFormError(null);
+    setAiSuggestions(null);
     setGpsCapturedCoords(null);
     setGpsAccuracy(null);
     setGpsNotice(null);
@@ -244,43 +283,122 @@ export function BeneficiaryAppForm() {
     const digits = lookupInput.replace(/\D/g, '');
     const text = lookupInput.trim().toLowerCase();
     if (digits.length < 3 && text.length < 3) {
-      setLookupFeedback('Informe CPF ou nome completo para localizar seu cadastro.');
+      setLookupFeedback('Informe CPF (titular ou morador) ou nome para localizar.');
       return;
     }
     const found = beneficiaries.find(
       (b) =>
         (digits.length >= 3 && b.cpf.replace(/\D/g, '').includes(digits)) ||
+        (digits.length >= 3 &&
+          (b.householdMembers ?? []).some((m) => m.cpf.replace(/\D/g, '').includes(digits))) ||
         b.fullName.toLowerCase().includes(text)
     );
     if (found) {
       loadBeneficiary(found);
-      setLookupFeedback(`Cadastro localizado: ${found.fullName}. Você pode atualizar sem perder o histórico.`);
+      setLookupFeedback(`Cadastro localizado: ${found.fullName}. Atualize sem perder o histórico.`);
     } else {
-      setLookupFeedback('CPF não localizado na base. Clique em "Novo cadastro" para iniciar.');
+      setLookupFeedback('CPF não localizado. Clique em "Novo cadastro" para iniciar.');
     }
   };
 
-  const age = calculateAge(draft.birthDate);
-  const benefitsTotal = draft.socialPrograms.reduce((s, p) => s + (Number(p.monthlyValue) || 0), 0);
-  const perCapitaAuto = Math.round(
-    ((Number(draft.householdTotalIncome) || 0) + benefitsTotal) / Math.max(1, draft.householdSize)
-  );
-
-  const toggleProgram = (programName: string) => {
+  // Household CPF-linked member handlers
+  const addHouseholdMember = () => {
+    const nextMember: HouseholdMemberLink = {
+      id: `M-${Date.now()}`,
+      fullName: '',
+      cpf: '',
+      relationship: 'Filho(a)',
+      birthDate: '2014-05-10',
+    };
     setDraft((prev) => {
-      const exists = prev.socialPrograms.some((p) => p.name === programName);
-      if (exists) {
-        return {
-          ...prev,
-          socialPrograms: prev.socialPrograms.filter((p) => p.name !== programName),
-        };
-      }
+      const members = [...prev.householdMembers, nextMember];
       return {
         ...prev,
-        socialPrograms: [
-          ...prev.socialPrograms,
-          { name: programName, monthlyValue: DEFAULT_PROGRAM_VALUES[programName] ?? 300 },
-        ],
+        householdMembers: members,
+        householdSize: 1 + members.length,
+        dependentsCount: Math.max(prev.dependentsCount, members.length),
+      };
+    });
+  };
+
+  const updateHouseholdMember = <K extends keyof HouseholdMemberLink>(
+    id: string,
+    key: K,
+    value: HouseholdMemberLink[K]
+  ) => {
+    setDraft((prev) => ({
+      ...prev,
+      householdMembers: prev.householdMembers.map((m) =>
+        m.id === id ? { ...m, [key]: value } : m
+      ),
+    }));
+  };
+
+  const removeHouseholdMember = (id: string) => {
+    setDraft((prev) => {
+      const members = prev.householdMembers.filter((m) => m.id !== id);
+      return {
+        ...prev,
+        householdMembers: members,
+        householdSize: 1 + members.length,
+        dependentsCount: Math.min(prev.dependentsCount, members.length),
+      };
+    });
+  };
+
+  const updateDeclaration = <K extends keyof PolicySelfDeclaration>(
+    key: K,
+    value: PolicySelfDeclaration[K]
+  ) => {
+    setDraft((prev) => ({
+      ...prev,
+      selfDeclaration: {
+        ...prev.selfDeclaration,
+        [key]: value,
+        crossCheckStatus: 'AGUARDANDO_CRUZAMENTO',
+        crossCheckNotes:
+          'Autodeclaração atualizada; pronta para cruzamento automático com as bases oficiais.',
+      },
+    }));
+  };
+
+  const age = calculateAge(draft.birthDate);
+  const totalPeopleInHome = 1 + draft.householdMembers.length;
+  const benefitsTotal = draft.socialPrograms.reduce((s, p) => s + (Number(p.monthlyValue) || 0), 0);
+  const perCapitaAuto = Math.round(
+    ((Number(draft.householdTotalIncome) || 0) + benefitsTotal) / Math.max(1, totalPeopleInHome)
+  );
+
+  const togglePolicyDeclaration = (policyName: string, defaultVal: number) => {
+    setDraft((prev) => {
+      const alreadyDeclared = prev.selfDeclaration.declaredPolicies.includes(policyName);
+      const nextDeclared = alreadyDeclared
+        ? prev.selfDeclaration.declaredPolicies.filter((n) => n !== policyName)
+        : [...prev.selfDeclaration.declaredPolicies, policyName];
+
+      let nextPrograms = prev.socialPrograms;
+      if (defaultVal > 0) {
+        if (alreadyDeclared) {
+          nextPrograms = prev.socialPrograms.filter((p) => p.name !== policyName);
+        } else if (!prev.socialPrograms.some((p) => p.name === policyName)) {
+          nextPrograms = [...prev.socialPrograms, { name: policyName, monthlyValue: defaultVal }];
+        }
+      }
+
+      const nextPassaporte =
+        policyName === 'Passaporte Universitário'
+          ? !alreadyDeclared
+          : prev.selfDeclaration.passaporteUniversitario;
+
+      return {
+        ...prev,
+        socialPrograms: nextPrograms,
+        selfDeclaration: {
+          ...prev.selfDeclaration,
+          declaredPolicies: nextDeclared,
+          passaporteUniversitario: nextPassaporte,
+          crossCheckStatus: 'AGUARDANDO_CRUZAMENTO',
+        },
       };
     });
   };
@@ -292,6 +410,56 @@ export function BeneficiaryAppForm() {
         p.name === programName ? { ...p, monthlyValue: Math.max(0, value) } : p
       ),
     }));
+  };
+
+  const runAiPolicyAssistant = () => {
+    setAiLoading(true);
+    setTimeout(() => {
+      const list = suggestPoliciesWithAI(
+        {
+          age,
+          employmentStatus: draft.employmentStatus,
+          workRegime: draft.workRegime,
+          housingType: draft.housingType,
+          individualIncome: draft.individualIncome,
+          householdSize: totalPeopleInHome,
+          dependentsCount: draft.dependentsCount,
+          education: draft.education,
+          hasPublicSchoolStudent: draft.selfDeclaration.publicSchoolStudent,
+          hasPassaporte: draft.selfDeclaration.passaporteUniversitario,
+          hasCadUnico: draft.selfDeclaration.cadUnicoRegistered,
+        },
+        aiPrompt
+      );
+      setAiSuggestions(list);
+      setAiLoading(false);
+    }, 450);
+  };
+
+  const applyAllAiSuggestions = () => {
+    if (!aiSuggestions) return;
+    setDraft((prev) => {
+      const declaredSet = new Set(prev.selfDeclaration.declaredPolicies);
+      const programs = [...prev.socialPrograms];
+      let hasPass = prev.selfDeclaration.passaporteUniversitario;
+      for (const s of aiSuggestions) {
+        declaredSet.add(s.policy.name);
+        if (s.policy.defaultValue > 0 && !programs.some((p) => p.name === s.policy.name)) {
+          programs.push({ name: s.policy.name, monthlyValue: s.policy.defaultValue });
+        }
+        if (s.policy.name === 'Passaporte Universitário') hasPass = true;
+      }
+      return {
+        ...prev,
+        socialPrograms: programs,
+        selfDeclaration: {
+          ...prev.selfDeclaration,
+          declaredPolicies: Array.from(declaredSet),
+          passaporteUniversitario: hasPass,
+          crossCheckStatus: 'AGUARDANDO_CRUZAMENTO',
+        },
+      };
+    });
   };
 
   const handleNeighborhoodChange = (bairroName: string) => {
@@ -418,7 +586,7 @@ export function BeneficiaryAppForm() {
           ...prev.documents,
           facialVerified: true,
           facialConsentLgpd: true,
-          facialVerifiedAt: '2026-11-23',
+          facialVerifiedAt: '2026-11-24',
         },
       }));
       setAnalyzingFace(false);
@@ -429,12 +597,21 @@ export function BeneficiaryAppForm() {
     setFormError(null);
     if (step === 1 && targetStep > 1) {
       if (draft.fullName.trim().length < 4) {
-        setFormError('Informe o nome completo do beneficiário.');
+        setFormError('Informe o nome completo do titular.');
         return;
       }
       if (draft.cpf.replace(/\D/g, '').length < 11) {
-        setFormError('Informe um CPF válido com 11 dígitos.');
+        setFormError('Informe um CPF válido (11 dígitos) para o titular.');
         return;
+      }
+      for (let i = 0; i < draft.householdMembers.length; i++) {
+        const m = draft.householdMembers[i];
+        if (m.fullName.trim().length < 3 || m.cpf.replace(/\D/g, '').length < 11) {
+          setFormError(
+            `Preencha nome e CPF completo (11 dígitos) da pessoa ${i + 1} vinculada na casa.`
+          );
+          return;
+        }
       }
     }
     if (step === 3 && targetStep > 3) {
@@ -451,45 +628,45 @@ export function BeneficiaryAppForm() {
     const result = upsertBeneficiary(
       {
         ...draft,
+        householdSize: totalPeopleInHome,
         householdTotalIncome: Math.max(draft.householdTotalIncome, draft.individualIncome),
         pendingValidation: !draft.documents.idDocAttached || !draft.documents.residenceProofAttached,
       },
       {
         offlineMode: offlineFieldMode,
-        updatedBy: offlineFieldMode ? 'Equipe de Campo (Offline)' : 'Aplicativo do Beneficiário',
+        updatedBy: offlineFieldMode ? 'Equipe de Campo (Offline)' : 'Aplicativo ID Maricá',
         note:
           updateNote.trim() ||
           (loadedRecord
-            ? 'Atualização trimestral concluída com preservação do histórico anterior.'
-            : 'Cadastro inicial individual vinculado ao CPF.'),
+            ? 'Atualização trimestral com autodeclaração de políticas e CPFs da casa preservados.'
+            : 'Novo cadastro individual vinculado ao CPF no ID Maricá.'),
       }
     );
     setReceipt({ ...result, perCapita: perCapitaAuto });
     setStep(5);
   };
 
-  const quickExamples = ['BEN-001', 'BEN-011', 'BEN-006']
+  const quickExamples = ['BEN-001', 'BEN-003', 'BEN-011']
     .map((id) => beneficiaries.find((b) => b.id === id))
     .filter((b): b is BeneficiaryRecord => Boolean(b));
 
   const currentStatus = loadedRecord ? getRegistrationStatus(loadedRecord) : null;
 
   return (
-    <div className="mx-auto max-w-[1320px] px-4 py-16 sm:px-6 md:py-20">
+    <div className="mx-auto max-w-[1320px] px-4 py-14 sm:px-6 md:py-20">
       {/* Section Header */}
       <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
         <div className="max-w-2xl">
           <div className="h-[4px] w-14 bg-[#D93829]" />
           <h2 className="font-display mt-4 text-3xl font-extrabold tracking-tight text-[#0B3B49] sm:text-4xl lg:text-[42px] lg:leading-[1.1]">
-            Aplicativo de cadastro e atualização trimestral
+            Faça seu cadastro e atualização no ID Maricá
           </h2>
           <p className="mt-3 text-base leading-relaxed text-[#52646D] sm:text-lg">
-            Atualize seus dados a cada 3 meses sem criar um novo cadastro. Todo o histórico
-            econômico fica preservado para melhorar as políticas públicas de Maricá.
+            Vincule cada morador da casa pelo CPF, autodeclare as políticas públicas que você
+            acessa e atualize a cada 3 meses preservando todo o histórico.
           </p>
         </div>
 
-        {/* Field Offline Toggle + Progress */}
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
@@ -502,7 +679,7 @@ export function BeneficiaryAppForm() {
             }`}
           >
             <WifiOff className="h-4 w-4" />
-            {offlineFieldMode ? 'Modo campo offline ativo' : 'Simular coleta offline'}
+            {offlineFieldMode ? 'Modo campo offline ativo' : 'Coleta offline (campo)'}
           </button>
 
           {offlineQueue.length > 0 && (
@@ -520,7 +697,7 @@ export function BeneficiaryAppForm() {
               <div>
                 <div className="text-[11px] font-semibold text-[#52646D]">Progresso</div>
                 <div className="font-display text-sm font-extrabold text-[#0B3B49] tabular-nums">
-                  Módulo {step} de 4
+                  Passo {step} de 4
                 </div>
               </div>
               <div className="h-2.5 w-24 overflow-hidden rounded-full bg-[#DCE3E8]">
@@ -536,12 +713,12 @@ export function BeneficiaryAppForm() {
 
       {/* Main Studio Card */}
       <div className="overflow-hidden rounded-[14px] border border-[#DCE3E8] bg-white shadow-[0_18px_46px_-16px_rgba(11,59,73,0.14)]">
-        <div className="grid grid-cols-1 lg:grid-cols-[296px_1fr]">
-          {/* Left Module Navigation Rail */}
-          <aside className="flex flex-col justify-between border-b border-[#DCE3E8] bg-[#0B3B49] p-6 text-white lg:border-b-0 lg:border-r lg:p-7">
+        <div className="grid grid-cols-1 lg:grid-cols-[290px_1fr]">
+          {/* Left Module Rail */}
+          <aside className="flex flex-col justify-between border-b border-[#DCE3E8] bg-[#0B3B49] p-5 text-white lg:border-b-0 lg:border-r lg:p-7">
             <div>
-              <div className="text-sm font-bold text-[#E89B0C]">Módulos do cadastro</div>
-              <ol className="mt-5 grid grid-cols-2 gap-3.5 lg:grid-cols-1 lg:space-y-4 lg:gap-0">
+              <div className="text-sm font-bold text-[#E89B0C]">Etapas do ID Maricá</div>
+              <ol className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-1 lg:space-y-4 lg:gap-0">
                 {MODULES.map((item) => {
                   const isCurrent = step === item.n;
                   const isDone = step > item.n;
@@ -550,10 +727,10 @@ export function BeneficiaryAppForm() {
                       <button
                         type="button"
                         onClick={() => step <= 4 && validateStep(item.n)}
-                        className="flex w-full items-start gap-3 text-left cursor-pointer"
+                        className="flex w-full items-start gap-2.5 text-left cursor-pointer"
                       >
                         <span
-                          className={`font-display flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-extrabold transition-all ${
+                          className={`font-display flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-extrabold transition-all sm:h-9 sm:w-9 ${
                             isDone
                               ? 'bg-[#156F48] text-white'
                               : isCurrent
@@ -565,13 +742,13 @@ export function BeneficiaryAppForm() {
                         </span>
                         <div className="leading-snug">
                           <div
-                            className={`font-display text-sm font-bold sm:text-base ${
+                            className={`font-display text-xs font-bold sm:text-sm ${
                               isCurrent || isDone ? 'text-white' : 'text-[#A7C1CA]'
                             }`}
                           >
                             {item.title}
                           </div>
-                          <div className="mt-0.5 text-xs text-[#A7C1CA]">{item.subtitle}</div>
+                          <div className="mt-0.5 text-[11px] text-[#A7C1CA]">{item.subtitle}</div>
                         </div>
                       </button>
                     </li>
@@ -584,21 +761,21 @@ export function BeneficiaryAppForm() {
               <div className="rounded-[8px] bg-[#072933] p-3.5">
                 <strong className="block text-sm text-[#E89B0C]">Validade de 3 meses</strong>
                 <p className="mt-1">
-                  O vencimento cadastral serve para manter seus dados atualizados e{' '}
-                  <strong className="text-white">não suspende automaticamente</strong> nenhum
-                  benefício.
+                  O vencimento cadastral{' '}
+                  <strong className="text-white">não suspende automaticamente</strong> seu
+                  benefício. Serve apenas para manter o cadastro atualizado.
                 </p>
               </div>
               <p>
-                Proteção LGPD (Lei nº 13.709/2018): dados individuais ficam restritos a servidores
-                autorizados com trilha de auditoria.
+                Sua autodeclaração será cruzada depois com CadÚnico, e-SUS, CRAS, Rede Escolar e
+                Passaporte Universitário.
               </p>
             </div>
           </aside>
 
           {/* Right Workspace */}
-          <div className="p-6 sm:p-8">
-            {/* CPF Lookup / New Registration Toolbar (always accessible on Step 1) */}
+          <div className="p-5 sm:p-8">
+            {/* CPF Lookup Toolbar */}
             {step === 1 && (
               <div className="mb-6 rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-4 sm:p-5">
                 <form onSubmit={handleLookup} className="flex flex-col gap-2.5 sm:flex-row">
@@ -611,8 +788,8 @@ export function BeneficiaryAppForm() {
                       type="text"
                       value={lookupInput}
                       onChange={(e) => setLookupInput(formatCpfInput(e.target.value))}
-                      placeholder="Buscar cadastro existente por CPF ou nome..."
-                      aria-label="Buscar cadastro existente por CPF ou nome"
+                      placeholder="Buscar por CPF (titular ou morador) ou nome..."
+                      aria-label="Buscar cadastro por CPF ou nome"
                       className="min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white py-2.5 pl-10 pr-4 text-sm font-semibold text-[#0B3B49]"
                     />
                   </div>
@@ -632,10 +809,9 @@ export function BeneficiaryAppForm() {
                   </button>
                 </form>
 
-                {/* Quick Example Profiles + Validity Status */}
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="font-medium text-[#52646D]">Carregar exemplo:</span>
+                    <span className="font-medium text-[#52646D]">Exemplos:</span>
                     {quickExamples.map((ex) => {
                       const st = getRegistrationStatus(ex);
                       const active = loadedRecord?.id === ex.id;
@@ -650,7 +826,8 @@ export function BeneficiaryAppForm() {
                               : 'border border-[#DCE3E8] bg-white text-[#0B3B49] hover:bg-[#EDF4F6]'
                           }`}
                         >
-                          {ex.fullName.split(' ')[0]} ({st === 'VENCIDO' ? 'Vencido' : st === 'PENDENTE_VALIDACAO' ? 'Pendente' : 'Atualizado'})
+                          {ex.fullName.split(' ')[0]} (
+                          {st === 'VENCIDO' ? 'Vencido' : ex.selfDeclaration?.passaporteUniversitario ? 'Passaporte' : 'Atualizado'})
                         </button>
                       );
                     })}
@@ -687,39 +864,37 @@ export function BeneficiaryAppForm() {
               </div>
             )}
 
-            {/* MODULE 1: PERSONAL DATA */}
+            {/* MODULE 1: PERSONAL DATA + CPF-LINKED HOUSEHOLD MEMBERS */}
             {step === 1 && (
-              <div key="mod-1" className="anim-step space-y-5">
+              <div key="mod-1" className="anim-step space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="font-display text-xl font-extrabold text-[#0B3B49]">
-                    1. Dados pessoais e núcleo familiar
+                    1. Dados do titular e pessoas na casa (por CPF)
                   </h3>
-                  {loadedRecord && (
-                    <span className="text-xs font-semibold text-[#52646D]">
-                      Cadastrado em {formatDateBr(loadedRecord.registeredAt)} (histórico com{' '}
-                      {loadedRecord.history.length} ciclo(s))
-                    </span>
-                  )}
+                  <span className="rounded-[5px] bg-[#EDF7FA] px-2.5 py-1 text-xs font-bold text-[#0E7490] tabular-nums">
+                    Total na residência: {totalPeopleInHome}{' '}
+                    {totalPeopleInHome === 1 ? 'pessoa' : 'pessoas'}
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="sm:col-span-2">
                     <label htmlFor="f-name" className="block text-xs font-bold text-[#0B3B49]">
-                      Nome completo
+                      Nome completo do titular
                     </label>
                     <input
                       id="f-name"
                       type="text"
                       value={draft.fullName}
                       onChange={(e) => setDraft((p) => ({ ...p, fullName: e.target.value }))}
-                      placeholder="Digite o nome completo do beneficiário"
+                      placeholder="Nome completo conforme documento"
                       className="mt-1 min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3.5 py-2 text-sm text-[#0B3B49]"
                     />
                   </div>
 
                   <div>
                     <label htmlFor="f-cpf" className="block text-xs font-bold text-[#0B3B49]">
-                      CPF (chave individual)
+                      CPF do titular (chave individual)
                     </label>
                     <input
                       id="f-cpf"
@@ -831,9 +1006,9 @@ export function BeneficiaryAppForm() {
                     />
                   </div>
 
-                  <div>
+                  <div className="sm:col-span-2">
                     <label htmlFor="f-email" className="block text-xs font-bold text-[#0B3B49]">
-                      E-mail para notificações
+                      E-mail para avisos de atualização
                     </label>
                     <input
                       id="f-email"
@@ -844,84 +1019,149 @@ export function BeneficiaryAppForm() {
                       className="mt-1 min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3.5 py-2 text-sm text-[#0B3B49]"
                     />
                   </div>
+                </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                {/* CPF-Linked Household Members Section */}
+                <div className="rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-4 sm:p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <label htmlFor="f-hsize" className="block text-xs font-bold text-[#0B3B49]">
-                        Pessoas na casa
-                      </label>
-                      <input
-                        id="f-hsize"
-                        type="number"
-                        min={1}
-                        max={15}
-                        value={draft.householdSize}
-                        onChange={(e) =>
-                          setDraft((p) => ({
-                            ...p,
-                            householdSize: Math.max(1, Number(e.target.value) || 1),
-                          }))
-                        }
-                        className="mt-1 min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3 py-2 text-sm font-bold text-[#0B3B49]"
-                      />
+                      <h4 className="flex items-center gap-2 font-display text-base font-extrabold text-[#0B3B49]">
+                        <Users className="h-4 w-4 text-[#0E7490]" />
+                        Pessoas que moram na casa (vinculadas por CPF)
+                      </h4>
+                      <p className="mt-0.5 text-xs text-[#52646D]">
+                        Cada integrante do domicílio deve ter seu cadastro vinculado ao próprio CPF.
+                      </p>
                     </div>
-                    <div>
-                      <label htmlFor="f-dep" className="block text-xs font-bold text-[#0B3B49]">
-                        Dependentes
-                      </label>
-                      <input
-                        id="f-dep"
-                        type="number"
-                        min={0}
-                        max={14}
-                        value={draft.dependentsCount}
-                        onChange={(e) =>
-                          setDraft((p) => ({
-                            ...p,
-                            dependentsCount: Math.max(0, Number(e.target.value) || 0),
-                          }))
-                        }
-                        className="mt-1 min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3 py-2 text-sm font-bold text-[#0B3B49]"
-                      />
-                    </div>
+                    <button
+                      type="button"
+                      onClick={addHouseholdMember}
+                      className="inline-flex min-h-[42px] items-center gap-1.5 rounded-[8px] bg-[#0B3B49] px-3.5 py-2 text-xs font-extrabold text-white hover:bg-[#072933] cursor-pointer"
+                    >
+                      <Plus className="h-4 w-4 text-[#E89B0C]" />
+                      Adicionar pessoa (CPF)
+                    </button>
                   </div>
+
+                  {draft.householdMembers.length === 0 ? (
+                    <div className="mt-3 rounded-[8px] border border-dashed border-[#C4D0D7] bg-white p-4 text-center text-xs text-[#52646D]">
+                      Apenas o titular reside no imóvel. Caso morem outras pessoas, clique em{' '}
+                      <strong>Adicionar pessoa (CPF)</strong>.
+                    </div>
+                  ) : (
+                    <div className="mt-3 space-y-3">
+                      {draft.householdMembers.map((m, idx) => (
+                        <div
+                          key={m.id}
+                          className="rounded-[8px] border border-[#DCE3E8] bg-white p-3.5"
+                        >
+                          <div className="mb-2 flex items-center justify-between">
+                            <span className="text-xs font-extrabold text-[#0B3B49]">
+                              Morador {idx + 1} (vínculo por CPF)
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeHouseholdMember(m.id)}
+                              aria-label={`Remover morador ${idx + 1}`}
+                              className="inline-flex items-center gap-1 rounded-[5px] px-2 py-1 text-xs font-bold text-[#B52B1E] hover:bg-[#FDE8E6] cursor-pointer"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Remover
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+                            <input
+                              type="text"
+                              value={m.fullName}
+                              onChange={(e) =>
+                                updateHouseholdMember(m.id, 'fullName', e.target.value)
+                              }
+                              placeholder="Nome completo"
+                              aria-label={`Nome completo do morador ${idx + 1}`}
+                              className="min-h-[42px] rounded-[7px] border border-[#C4D0D7] px-3 py-1.5 text-xs font-semibold text-[#0B3B49]"
+                            />
+                            <input
+                              type="text"
+                              value={m.cpf}
+                              onChange={(e) =>
+                                updateHouseholdMember(m.id, 'cpf', formatCpfInput(e.target.value))
+                              }
+                              placeholder="CPF: 000.000.000-00"
+                              aria-label={`CPF do morador ${idx + 1}`}
+                              className="min-h-[42px] rounded-[7px] border border-[#C4D0D7] px-3 py-1.5 text-xs font-bold text-[#0B3B49]"
+                            />
+                            <select
+                              value={m.relationship}
+                              onChange={(e) =>
+                                updateHouseholdMember(
+                                  m.id,
+                                  'relationship',
+                                  e.target.value as HouseholdMemberLink['relationship']
+                                )
+                              }
+                              aria-label={`Parentesco do morador ${idx + 1}`}
+                              className="min-h-[42px] rounded-[7px] border border-[#C4D0D7] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#0B3B49]"
+                            >
+                              <option value="Cônjuge / Companheiro(a)">Cônjuge / Companheiro(a)</option>
+                              <option value="Filho(a)">Filho(a)</option>
+                              <option value="Mãe / Pai">Mãe / Pai</option>
+                              <option value="Neto(a)">Neto(a)</option>
+                              <option value="Irmão(ã)">Irmão(ã)</option>
+                              <option value="Outro">Outro</option>
+                            </select>
+                            <input
+                              type="date"
+                              value={m.birthDate}
+                              onChange={(e) =>
+                                updateHouseholdMember(m.id, 'birthDate', e.target.value)
+                              }
+                              aria-label={`Data de nascimento do morador ${idx + 1}`}
+                              className="min-h-[42px] rounded-[7px] border border-[#C4D0D7] px-2.5 py-1.5 text-xs text-[#0B3B49]"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end border-t border-[#DCE3E8] pt-5">
                   <button
                     type="button"
                     onClick={() => validateStep(2)}
-                    className="inline-flex min-h-[50px] items-center gap-2 rounded-[8px] bg-[#D93829] px-7 py-3 text-sm font-extrabold text-white transition-all hover:bg-[#B52B1E] active:scale-[0.98] cursor-pointer sm:text-base"
+                    className="inline-flex min-h-[50px] items-center gap-2 rounded-[8px] bg-[#D93829] px-7 py-3 text-sm font-extrabold text-white transition-all hover:bg-[#B52B1E] cursor-pointer sm:text-base"
                   >
-                    Continuar para Profissional e renda
+                    Continuar para Renda e políticas
                     <ChevronRight className="h-5 w-5" />
                   </button>
                 </div>
               </div>
             )}
 
-            {/* MODULE 2: PROFESSIONAL & ECONOMIC */}
+            {/* MODULE 2: ECONOMIC + SELF-DECLARATION OF POLICIES + AI SUGGESTION */}
             {step === 2 && (
-              <div key="mod-2" className="anim-step space-y-5">
+              <div key="mod-2" className="anim-step space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h3 className="flex items-center gap-2 font-display text-xl font-extrabold text-[#0B3B49]">
                     <Briefcase className="h-5 w-5 text-[#0E7490]" />
-                    2. Dados profissionais e econômicos
+                    2. Trabalho, renda e autodeclaração de políticas
                   </h3>
                   <div className="rounded-[8px] border border-[#156F48]/30 bg-[#E6F4ED] px-4 py-2 text-right">
                     <div className="text-[11px] font-bold text-[#156F48]">
                       Renda familiar per capita (automática)
                     </div>
                     <div className="font-display text-lg font-extrabold text-[#0F4D32] tabular-nums">
-                      {formatCurrency(perCapitaAuto)} / pessoa
+                      {formatCurrency(perCapitaAuto)} / pessoa ({totalPeopleInHome} na casa)
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {/* 2A. Work & Income */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <div>
                     <label htmlFor="f-emp" className="block text-xs font-bold text-[#0B3B49]">
-                      Situação profissional atual
+                      Situação profissional
                     </label>
                     <select
                       id="f-emp"
@@ -943,7 +1183,7 @@ export function BeneficiaryAppForm() {
                                     : 'CLT',
                         }));
                       }}
-                      className="mt-1 min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3 py-2 text-sm text-[#0B3B49]"
+                      className="mt-1 min-h-[44px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3 py-2 text-xs font-semibold text-[#0B3B49]"
                     >
                       {(Object.keys(EMPLOYMENT_LABELS) as EmploymentStatus[]).map((k) => (
                         <option key={k} value={k}>
@@ -963,7 +1203,7 @@ export function BeneficiaryAppForm() {
                       onChange={(e) =>
                         setDraft((p) => ({ ...p, workRegime: e.target.value as WorkRegime }))
                       }
-                      className="mt-1 min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3 py-2 text-sm text-[#0B3B49]"
+                      className="mt-1 min-h-[44px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3 py-2 text-xs font-semibold text-[#0B3B49]"
                     >
                       {(Object.keys(WORK_REGIME_LABELS) as WorkRegime[]).map((k) => (
                         <option key={k} value={k}>
@@ -974,20 +1214,6 @@ export function BeneficiaryAppForm() {
                   </div>
 
                   <div>
-                    <label htmlFor="f-prof" className="block text-xs font-bold text-[#0B3B49]">
-                      Profissão / Ocupação atual
-                    </label>
-                    <input
-                      id="f-prof"
-                      type="text"
-                      value={draft.profession}
-                      onChange={(e) => setDraft((p) => ({ ...p, profession: e.target.value }))}
-                      placeholder="Ex.: Operadora de caixa, Eletricista..."
-                      className="mt-1 min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3.5 py-2 text-sm text-[#0B3B49]"
-                    />
-                  </div>
-
-                  <div>
                     <label htmlFor="f-sec" className="block text-xs font-bold text-[#0B3B49]">
                       Setor econômico
                     </label>
@@ -995,7 +1221,7 @@ export function BeneficiaryAppForm() {
                       id="f-sec"
                       value={draft.economicSector}
                       onChange={(e) => setDraft((p) => ({ ...p, economicSector: e.target.value }))}
-                      className="mt-1 min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3 py-2 text-sm text-[#0B3B49]"
+                      className="mt-1 min-h-[44px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3 py-2 text-xs font-semibold text-[#0B3B49]"
                     >
                       {ECONOMIC_SECTORS.map((s) => (
                         <option key={s} value={s}>
@@ -1006,42 +1232,22 @@ export function BeneficiaryAppForm() {
                   </div>
 
                   <div>
-                    <label htmlFor="f-employer" className="block text-xs font-bold text-[#0B3B49]">
-                      Empregador / Empresa (quando aplicável)
+                    <label htmlFor="f-prof" className="block text-xs font-bold text-[#0B3B49]">
+                      Profissão / Ocupação
                     </label>
                     <input
-                      id="f-employer"
+                      id="f-prof"
                       type="text"
-                      value={draft.employerName}
-                      onChange={(e) => setDraft((p) => ({ ...p, employerName: e.target.value }))}
-                      placeholder="Nome da empresa ou MEI"
-                      className="mt-1 min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3.5 py-2 text-sm text-[#0B3B49]"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="f-contrib" className="block text-xs font-bold text-[#0B3B49]">
-                      Pessoas que contribuem para a renda
-                    </label>
-                    <input
-                      id="f-contrib"
-                      type="number"
-                      min={0}
-                      max={10}
-                      value={draft.incomeContributorsCount}
-                      onChange={(e) =>
-                        setDraft((p) => ({
-                          ...p,
-                          incomeContributorsCount: Math.max(0, Number(e.target.value) || 0),
-                        }))
-                      }
-                      className="mt-1 min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3.5 py-2 text-sm font-bold text-[#0B3B49]"
+                      value={draft.profession}
+                      onChange={(e) => setDraft((p) => ({ ...p, profession: e.target.value }))}
+                      placeholder="Ex.: Operadora de caixa, Eletricista"
+                      className="mt-1 min-h-[44px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3 py-2 text-sm text-[#0B3B49]"
                     />
                   </div>
 
                   <div>
                     <label htmlFor="f-inc" className="block text-xs font-bold text-[#0B3B49]">
-                      Salário / Rendimento individual (R$/mês)
+                      Salário individual (R$/mês)
                     </label>
                     <input
                       id="f-inc"
@@ -1057,13 +1263,13 @@ export function BeneficiaryAppForm() {
                           householdTotalIncome: Math.max(p.householdTotalIncome, val),
                         }));
                       }}
-                      className="mt-1 min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3.5 py-2 text-sm font-bold text-[#0B3B49]"
+                      className="mt-1 min-h-[44px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3 py-2 text-sm font-bold text-[#0B3B49]"
                     />
                   </div>
 
                   <div>
                     <label htmlFor="f-hinc" className="block text-xs font-bold text-[#0B3B49]">
-                      Renda familiar mensal total (sem benefícios, R$)
+                      Renda familiar total (R$/mês)
                     </label>
                     <input
                       id="f-hinc"
@@ -1077,58 +1283,348 @@ export function BeneficiaryAppForm() {
                           householdTotalIncome: Math.max(0, Number(e.target.value) || 0),
                         }))
                       }
-                      className="mt-1 min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3.5 py-2 text-sm font-bold text-[#0B3B49]"
+                      className="mt-1 min-h-[44px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3 py-2 text-sm font-bold text-[#0B3B49]"
                     />
                   </div>
                 </div>
 
-                {/* Social Programs Selector */}
-                <div className="rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-[#0B3B49]">
-                      Programas sociais ou municipais recebidos
-                    </span>
-                    <span className="text-xs font-extrabold text-[#0E7490] tabular-nums">
-                      Total em benefícios: {formatCurrency(benefitsTotal)}/mês
-                    </span>
+                {/* 2B. Structured Self-Declaration: CadÚnico, UBS, CRAS, Public School, Passaporte */}
+                <div className="space-y-4 rounded-[12px] border border-[#0B3B49]/20 bg-[#F8FAFB] p-4 sm:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <h4 className="flex items-center gap-2 font-display text-base font-extrabold text-[#0B3B49]">
+                        <GraduationCap className="h-5 w-5 text-[#D93829]" />
+                        Autodeclaração de redes e serviços públicos acessados
+                      </h4>
+                      <p className="mt-0.5 text-xs text-[#52646D]">
+                        Informe os serviços que sua família utiliza. Esta autodeclaração será
+                        cruzada posteriormente com as bases oficiais para validação.
+                      </p>
+                    </div>
                   </div>
-                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {SOCIAL_PROGRAM_OPTIONS.map((progName) => {
-                      const active = draft.socialPrograms.find((p) => p.name === progName);
-                      return (
-                        <div
-                          key={progName}
-                          className={`flex items-center justify-between gap-2 rounded-[8px] border px-3 py-2 text-xs ${
-                            active
-                              ? 'border-[#0B3B49] bg-white'
-                              : 'border-[#DCE3E8] bg-[#F4F6F8] text-[#52646D]'
-                          }`}
+
+                  <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+                    {/* CadÚnico */}
+                    <div className="rounded-[8px] border border-[#DCE3E8] bg-white p-3.5">
+                      <label className="flex cursor-pointer items-center justify-between gap-2 text-xs font-extrabold text-[#0B3B49]">
+                        <span>Possui cadastro no CadÚnico?</span>
+                        <input
+                          type="checkbox"
+                          checked={draft.selfDeclaration.cadUnicoRegistered}
+                          onChange={(e) =>
+                            updateDeclaration('cadUnicoRegistered', e.target.checked)
+                          }
+                          className="h-4 w-4 accent-[#0B3B49]"
+                        />
+                      </label>
+                      {draft.selfDeclaration.cadUnicoRegistered && (
+                        <input
+                          type="text"
+                          value={draft.selfDeclaration.nis ?? ''}
+                          onChange={(e) => updateDeclaration('nis', e.target.value)}
+                          placeholder="Número do NIS (se souber)"
+                          aria-label="Número do NIS no CadÚnico"
+                          className="mt-2.5 min-h-[40px] w-full rounded-[6px] border border-[#C4D0D7] px-3 py-1.5 text-xs text-[#0B3B49]"
+                        />
+                      )}
+                    </div>
+
+                    {/* CRAS */}
+                    <div className="rounded-[8px] border border-[#DCE3E8] bg-white p-3.5">
+                      <label className="flex cursor-pointer items-center justify-between gap-2 text-xs font-extrabold text-[#0B3B49]">
+                        <span>É atendido em algum CRAS?</span>
+                        <input
+                          type="checkbox"
+                          checked={draft.selfDeclaration.crasRegistered}
+                          onChange={(e) => updateDeclaration('crasRegistered', e.target.checked)}
+                          className="h-4 w-4 accent-[#0B3B49]"
+                        />
+                      </label>
+                      {draft.selfDeclaration.crasRegistered && (
+                        <select
+                          aria-label="Qual CRAS"
+                          value={draft.selfDeclaration.crasName ?? MARICA_CRAS_UNITS[0].name}
+                          onChange={(e) => updateDeclaration('crasName', e.target.value)}
+                          className="mt-2.5 min-h-[40px] w-full rounded-[6px] border border-[#C4D0D7] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#0B3B49]"
                         >
-                          <label className="flex flex-1 cursor-pointer items-center gap-2 font-semibold text-[#0B3B49]">
-                            <input
-                              type="checkbox"
-                              checked={Boolean(active)}
-                              onChange={() => toggleProgram(progName)}
-                              className="h-4 w-4 accent-[#0B3B49]"
-                            />
-                            <span>{progName}</span>
-                          </label>
-                          {active && (
-                            <input
-                              type="number"
-                              min={0}
-                              step={10}
-                              aria-label={`Valor mensal ${progName}`}
-                              value={active.monthlyValue}
-                              onChange={(e) =>
-                                updateProgramValue(progName, Number(e.target.value) || 0)
-                              }
-                              className="w-20 rounded-[5px] border border-[#C4D0D7] px-2 py-1 text-right font-bold text-[#0B3B49]"
-                            />
-                          )}
+                          {MARICA_CRAS_UNITS.map((c) => (
+                            <option key={c.id} value={c.name}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
+                    {/* UBS / Unidade de Saúde da Família */}
+                    <div className="rounded-[8px] border border-[#DCE3E8] bg-white p-3.5">
+                      <label className="flex cursor-pointer items-center justify-between gap-2 text-xs font-extrabold text-[#0B3B49]">
+                        <span>Cadastrado em Unidade de Saúde da Família (UBS)?</span>
+                        <input
+                          type="checkbox"
+                          checked={draft.selfDeclaration.ubsRegistered}
+                          onChange={(e) => updateDeclaration('ubsRegistered', e.target.checked)}
+                          className="h-4 w-4 accent-[#0B3B49]"
+                        />
+                      </label>
+                      {draft.selfDeclaration.ubsRegistered && (
+                        <select
+                          aria-label="Qual Unidade de Saúde da Família"
+                          value={
+                            draft.selfDeclaration.ubsName ?? expandUsfName(MARICA_REAL_USFS[0].name)
+                          }
+                          onChange={(e) => updateDeclaration('ubsName', e.target.value)}
+                          className="mt-2.5 min-h-[40px] w-full rounded-[6px] border border-[#C4D0D7] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#0B3B49]"
+                        >
+                          {MARICA_REAL_USFS.map((u) => {
+                            const full = expandUsfName(u.name);
+                            return (
+                              <option key={u.id} value={full}>
+                                {full}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      )}
+                    </div>
+
+                    {/* Public School Student */}
+                    <div className="rounded-[8px] border border-[#DCE3E8] bg-white p-3.5">
+                      <label className="flex cursor-pointer items-center justify-between gap-2 text-xs font-extrabold text-[#0B3B49]">
+                        <span>Há aluno em escola pública na casa?</span>
+                        <input
+                          type="checkbox"
+                          checked={draft.selfDeclaration.publicSchoolStudent}
+                          onChange={(e) =>
+                            updateDeclaration('publicSchoolStudent', e.target.checked)
+                          }
+                          className="h-4 w-4 accent-[#0B3B49]"
+                        />
+                      </label>
+                      {draft.selfDeclaration.publicSchoolStudent && (
+                        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <select
+                            aria-label="Qual escola pública"
+                            value={
+                              draft.selfDeclaration.schoolName ?? MARICA_MUNICIPAL_SCHOOLS[0].name
+                            }
+                            onChange={(e) => updateDeclaration('schoolName', e.target.value)}
+                            className="min-h-[40px] w-full rounded-[6px] border border-[#C4D0D7] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#0B3B49]"
+                          >
+                            {MARICA_MUNICIPAL_SCHOOLS.map((s) => (
+                              <option key={s.id} value={s.name}>
+                                {s.name} ({s.neighborhood})
+                              </option>
+                            ))}
+                            <option value="Outra escola pública estadual/municipal">
+                              Outra escola pública
+                            </option>
+                          </select>
+                          <select
+                            aria-label="Quem estuda na escola pública"
+                            value={draft.selfDeclaration.studentScope ?? 'Dependente(s)'}
+                            onChange={(e) =>
+                              updateDeclaration(
+                                'studentScope',
+                                e.target.value as PolicySelfDeclaration['studentScope']
+                              )
+                            }
+                            className="min-h-[40px] w-full rounded-[6px] border border-[#C4D0D7] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#0B3B49]"
+                          >
+                            <option value="Titular">Titular</option>
+                            <option value="Dependente(s)">Dependente(s)</option>
+                            <option value="Titular e dependente(s)">Titular e dependente(s)</option>
+                          </select>
                         </div>
-                      );
-                    })}
+                      )}
+                    </div>
+
+                    {/* Passaporte Universitário */}
+                    <div className="rounded-[8px] border border-[#DCE3E8] bg-white p-3.5 md:col-span-2">
+                      <label className="flex cursor-pointer items-center justify-between gap-2 text-xs font-extrabold text-[#0B3B49]">
+                        <span>Beneficiário do Passaporte Universitário de Maricá?</span>
+                        <input
+                          type="checkbox"
+                          checked={draft.selfDeclaration.passaporteUniversitario}
+                          onChange={(e) =>
+                            updateDeclaration('passaporteUniversitario', e.target.checked)
+                          }
+                          className="h-4 w-4 accent-[#0B3B49]"
+                        />
+                      </label>
+                      {draft.selfDeclaration.passaporteUniversitario && (
+                        <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                          <div>
+                            <label
+                              htmlFor="f-uni"
+                              className="block text-[11px] font-bold text-[#52646D]"
+                            >
+                              Qual universidade credenciada?
+                            </label>
+                            <select
+                              id="f-uni"
+                              value={
+                                draft.selfDeclaration.universityName ?? PASSAPORTE_UNIVERSITIES[0]
+                              }
+                              onChange={(e) => updateDeclaration('universityName', e.target.value)}
+                              className="mt-1 min-h-[40px] w-full rounded-[6px] border border-[#C4D0D7] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#0B3B49]"
+                            >
+                              {PASSAPORTE_UNIVERSITIES.map((u) => (
+                                <option key={u} value={u}>
+                                  {u}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label
+                              htmlFor="f-course"
+                              className="block text-[11px] font-bold text-[#52646D]"
+                            >
+                              Qual curso de graduação?
+                            </label>
+                            <select
+                              id="f-course"
+                              value={draft.selfDeclaration.universityCourse ?? PASSAPORTE_COURSES[0]}
+                              onChange={(e) =>
+                                updateDeclaration('universityCourse', e.target.value)
+                              }
+                              className="mt-1 min-h-[40px] w-full rounded-[6px] border border-[#C4D0D7] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#0B3B49]"
+                            >
+                              {PASSAPORTE_COURSES.map((c) => (
+                                <option key={c} value={c}>
+                                  {c}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2C. AI Assistant to Pull Matching Government Policies + Full Checklist */}
+                <div className="rounded-[12px] border border-[#0E7490]/35 bg-[#EDF7FA] p-4 sm:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h4 className="flex items-center gap-2 font-display text-base font-extrabold text-[#0B3B49]">
+                        <Cpu className="h-5 w-5 text-[#0E7490]" />
+                        Assistente de IA: puxar lista de políticas do governo
+                      </h4>
+                      <p className="mt-0.5 text-xs text-[#3B5560]">
+                        A IA analisa seu perfil preenchido (ou uma frase sua) para listar os
+                        programas municipais e federais compatíveis para você marcar.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <input
+                      type="text"
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder="Opcional: ex. pago aluguel, tenho filho na escola e uso Vermelhinho"
+                      aria-label="Descreva sua situação para o assistente de IA sugerir políticas"
+                      className="min-h-[44px] flex-1 rounded-[8px] border border-[#0E7490]/35 bg-white px-3.5 py-2 text-xs text-[#0B3B49]"
+                    />
+                    <button
+                      type="button"
+                      onClick={runAiPolicyAssistant}
+                      disabled={aiLoading}
+                      className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[8px] bg-[#0B3B49] px-4 py-2 text-xs font-extrabold text-white hover:bg-[#072933] cursor-pointer"
+                    >
+                      {aiLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Cpu className="h-4 w-4 text-[#E89B0C]" />
+                      )}
+                      {aiLoading ? 'Analisando perfil...' : 'Puxar lista com IA'}
+                    </button>
+                  </div>
+
+                  {aiSuggestions && (
+                    <div className="mt-3 rounded-[8px] border border-[#0E7490]/30 bg-white p-3.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-xs font-extrabold text-[#0B3B49]">
+                          {aiSuggestions.length} políticas sugeridas pela IA para o seu perfil
+                        </span>
+                        <button
+                          type="button"
+                          onClick={applyAllAiSuggestions}
+                          className="rounded-[6px] bg-[#156F48] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#115B3B] cursor-pointer"
+                        >
+                          Marcar todas sugeridas
+                        </button>
+                      </div>
+                      <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        {aiSuggestions.map((s) => (
+                          <div
+                            key={s.policy.id}
+                            className="rounded-[6px] bg-[#F8FAFB] px-3 py-2 text-xs"
+                          >
+                            <strong className="text-[#0B3B49]">{s.policy.name}</strong>
+                            <p className="mt-0.5 text-[11px] text-[#52646D]">{s.reason}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Full Self-Declaration Policy Checklist */}
+                  <div className="mt-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <span className="font-extrabold text-[#0B3B49]">
+                        Políticas que você acessa (autodeclaração —{' '}
+                        {draft.selfDeclaration.declaredPolicies.length} marcadas)
+                      </span>
+                      <span className="font-extrabold text-[#156F48] tabular-nums">
+                        Benefícios financeiros: {formatCurrency(benefitsTotal)}/mês
+                      </span>
+                    </div>
+
+                    <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {GOVERNMENT_POLICIES_CATALOG.map((pol) => {
+                        const checked = draft.selfDeclaration.declaredPolicies.includes(pol.name);
+                        const progItem = draft.socialPrograms.find((p) => p.name === pol.name);
+                        return (
+                          <div
+                            key={pol.id}
+                            className={`flex items-center justify-between gap-2 rounded-[8px] border px-3 py-2 text-xs transition-colors ${
+                              checked
+                                ? 'border-[#0B3B49] bg-white'
+                                : 'border-[#DCE3E8] bg-white/70 text-[#52646D]'
+                            }`}
+                          >
+                            <label className="flex flex-1 cursor-pointer items-start gap-2">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => togglePolicyDeclaration(pol.name, pol.defaultValue)}
+                                className="mt-0.5 h-4 w-4 accent-[#0B3B49]"
+                              />
+                              <span>
+                                <span className="block font-bold text-[#0B3B49]">{pol.name}</span>
+                                <span className="text-[10px] text-[#52646D]">{pol.sphere}</span>
+                              </span>
+                            </label>
+                            {checked && pol.defaultValue > 0 && progItem && (
+                              <input
+                                type="number"
+                                min={0}
+                                step={10}
+                                aria-label={`Valor mensal ${pol.name}`}
+                                value={progItem.monthlyValue}
+                                onChange={(e) =>
+                                  updateProgramValue(pol.name, Number(e.target.value) || 0)
+                                }
+                                className="w-20 rounded-[5px] border border-[#C4D0D7] px-2 py-1 text-right font-bold text-[#0B3B49]"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 
@@ -1146,14 +1642,14 @@ export function BeneficiaryAppForm() {
                     onClick={() => validateStep(3)}
                     className="inline-flex min-h-[50px] items-center gap-2 rounded-[8px] bg-[#D93829] px-7 py-3 text-sm font-extrabold text-white hover:bg-[#B52B1E] cursor-pointer sm:text-base"
                   >
-                    Continuar para Moradia e território
+                    Continuar para Moradia e GPS
                     <ChevronRight className="h-5 w-5" />
                   </button>
                 </div>
               </div>
             )}
 
-            {/* MODULE 3: HOUSING & GEOREFERENCING */}
+            {/* MODULE 3: HOUSING & REAL GPS */}
             {step === 3 && (
               <div key="mod-3" className="anim-step space-y-5">
                 <h3 className="flex items-center gap-2 font-display text-xl font-extrabold text-[#0B3B49]">
@@ -1262,7 +1758,7 @@ export function BeneficiaryAppForm() {
 
                     <div>
                       <label htmlFor="f-workb" className="block text-xs font-bold text-[#0B3B49]">
-                        Bairro do local de trabalho (análise de deslocamento)
+                        Bairro do local de trabalho (deslocamento)
                       </label>
                       <select
                         id="f-workb"
@@ -1280,13 +1776,13 @@ export function BeneficiaryAppForm() {
                     </div>
                   </div>
 
-                  {/* Right: Real GPS Capture Box */}
+                  {/* Real GPS Box */}
                   <div className="flex flex-col justify-between rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-4">
                     <div>
                       <div className="mb-2.5 flex items-center justify-between gap-2">
                         <span className="flex items-center gap-2 font-display text-sm font-extrabold text-[#0B3B49]">
                           <HomeGeofenceIcon />
-                          Georreferenciamento da residência
+                          Georreferenciamento
                         </span>
                         <span className="font-code text-[11px] font-semibold text-[#52646D]">
                           {draft.coords[0].toFixed(4)}, {draft.coords[1].toFixed(4)}
@@ -1302,7 +1798,7 @@ export function BeneficiaryAppForm() {
 
                       {gpsModeText && (
                         <div className="mt-2.5 rounded-[6px] bg-[#E6F4ED] px-3 py-2 text-xs font-semibold text-[#156F48]">
-                          {gpsModeText} capturado nas coordenadas exibidas no mapa.
+                          {gpsModeText} confirmado nas coordenadas do mapa.
                         </div>
                       )}
 
@@ -1358,21 +1854,18 @@ export function BeneficiaryAppForm() {
               </div>
             )}
 
-            {/* MODULE 4: DOCUMENTS, FACIAL LGPD & HISTORY */}
+            {/* MODULE 4: DOCUMENTS, BIOMETRICS & HISTORY */}
             {step === 4 && (
               <div key="mod-4" className="anim-step space-y-5">
                 <h3 className="flex items-center gap-2 font-display text-xl font-extrabold text-[#0B3B49]">
                   <FileText className="h-5 w-5 text-[#0E7490]" />
-                  4. Documentação, identificação e revisão
+                  4. Documentação, identificação e envio
                 </h3>
 
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  {/* Left: Document Attachments + Update Note */}
                   <div className="space-y-4">
-                    <div className="rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-4 space-y-3">
-                      <div className="text-sm font-extrabold text-[#0B3B49]">
-                        Anexos comprobatórios
-                      </div>
+                    <div className="space-y-3 rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-4">
+                      <div className="text-sm font-extrabold text-[#0B3B49]">Anexos do cadastro</div>
 
                       <label className="flex min-h-[54px] cursor-pointer items-center justify-between gap-3 rounded-[8px] border border-dashed border-[#0B3B49]/35 bg-white px-3.5 py-2.5 text-xs hover:bg-[#EDF4F6]">
                         <span className="flex items-center gap-2 font-semibold text-[#0B3B49]">
@@ -1435,17 +1928,16 @@ export function BeneficiaryAppForm() {
                         type="text"
                         value={updateNote}
                         onChange={(e) => setUpdateNote(e.target.value)}
-                        placeholder="Ex.: Novo emprego CLT, mudança de endereço ou abertura de MEI"
+                        placeholder="Ex.: Novo emprego CLT, matrícula na escola ou Passaporte"
                         className="mt-1 min-h-[44px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3.5 py-2 text-sm text-[#0B3B49]"
                       />
                     </div>
 
-                    {/* Preserved Longitudinal History */}
                     {loadedRecord && loadedRecord.history.length > 0 && (
                       <div className="rounded-[10px] border border-[#DCE3E8] bg-white p-4">
                         <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#0B3B49]">
                           <History className="h-4 w-4 text-[#0E7490]" />
-                          Histórico preservado ({loadedRecord.history.length} registros)
+                          Histórico preservado ({loadedRecord.history.length} ciclos)
                         </div>
                         <div className="mt-2.5 space-y-2 text-xs">
                           {loadedRecord.history.slice(-3).map((h) => (
@@ -1469,7 +1961,7 @@ export function BeneficiaryAppForm() {
                     )}
                   </div>
 
-                  {/* Right: Optional Biometrics with Explicit LGPD Consent */}
+                  {/* Optional Biometrics (LGPD) */}
                   <div className="flex flex-col justify-between rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-4">
                     <div>
                       <div className="mb-2.5 flex items-center justify-between">
@@ -1485,9 +1977,8 @@ export function BeneficiaryAppForm() {
                       </div>
 
                       <p className="mb-3 text-xs leading-relaxed text-[#52646D]">
-                        Dado pessoal sensível (Art. 5º, II da LGPD): a captura facial é opcional
-                        para quem preferir validação documental presencial no CRAS ou Unidade de
-                        Saúde da Família.
+                        Dado pessoal sensível (Art. 5º, II da LGPD): opcional para quem preferir
+                        conferência presencial no CRAS ou na Unidade de Saúde da Família.
                       </p>
 
                       {cameraActive ? (
@@ -1598,8 +2089,8 @@ export function BeneficiaryAppForm() {
                     {offlineFieldMode
                       ? 'Guardar na fila offline'
                       : loadedRecord
-                        ? 'Salvar atualização trimestral'
-                        : 'Concluir novo cadastro'}
+                        ? 'Salvar atualização no ID Maricá'
+                        : 'Concluir cadastro no ID Maricá'}
                   </button>
                 </div>
               </div>
@@ -1612,12 +2103,13 @@ export function BeneficiaryAppForm() {
                 <h3 className="font-display mt-5 text-2xl font-extrabold text-[#0B3B49]">
                   {receipt.queuedOffline
                     ? 'Cadastro guardado na fila offline de campo'
-                    : 'Cadastro atualizado com sucesso'}
+                    : 'Cadastro salvo no ID Maricá'}
                 </h3>
                 <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#52646D]">
-                  Protocolo <strong className="text-[#0B3B49]">{receipt.savedId}</strong> vinculado
-                  ao CPF informado. Todo o histórico econômico anterior foi preservado para estudos
-                  longitudinais e planejamento de políticas públicas.
+                  Protocolo <strong className="text-[#0B3B49]">{receipt.savedId}</strong> com{' '}
+                  <strong>{totalPeopleInHome} CPF(s) vinculados</strong> no domicílio e{' '}
+                  <strong>{draft.selfDeclaration.declaredPolicies.length} política(s)</strong>{' '}
+                  autodeclarada(s) para cruzamento com as bases oficiais.
                 </p>
 
                 <div className="mt-6 grid w-full max-w-xl grid-cols-1 gap-3 rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-5 text-left sm:grid-cols-3">
@@ -1634,7 +2126,7 @@ export function BeneficiaryAppForm() {
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-[#52646D]">Bairro / Distrito</div>
+                    <div className="text-xs text-[#52646D]">Bairro</div>
                     <div className="font-display mt-0.5 text-base font-extrabold text-[#0B3B49]">
                       {draft.neighborhood}
                     </div>
@@ -1656,7 +2148,7 @@ export function BeneficiaryAppForm() {
                     onClick={() => setStep(1)}
                     className="inline-flex min-h-[46px] items-center gap-2 rounded-[8px] border border-[#0B3B49] bg-white px-5 py-2.5 text-sm font-bold text-[#0B3B49] hover:bg-[#EDF4F6] cursor-pointer"
                   >
-                    Realizar nova consulta ou atualização
+                    Fazer nova consulta ou atualização
                   </button>
                 </div>
               </div>

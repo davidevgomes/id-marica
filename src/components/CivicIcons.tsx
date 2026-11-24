@@ -182,3 +182,31 @@ export function LayerHeatIcon() {
     </svg>
   );
 }
+
+export function LayerBikeIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="6.5" cy="16.5" r="3.5" fill="#FDE8E6" stroke="#D93829" strokeWidth="1.8" />
+      <circle cx="17.5" cy="16.5" r="3.5" fill="#FDE8E6" stroke="#D93829" strokeWidth="1.8" />
+      <path
+        d="M6.5 16.5L10.5 9.5H14.5L17.5 16.5M10.5 9.5L12 16.5M8.5 7H11.5M14.5 9.5L16 6.5H18"
+        stroke="#0B3B49"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function LayerCrasIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="16" rx="4" fill="#EDF7FA" stroke="#0E7490" strokeWidth="1.8" />
+      <circle cx="9.5" cy="10.5" r="2" fill="#0B3B49" />
+      <circle cx="15" cy="10.5" r="1.7" fill="#E89B0C" />
+      <path d="M6.5 16C7.3 14.2 8.4 13.5 9.5 13.5C10.6 13.5 11.7 14.2 12.5 16" stroke="#0B3B49" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M13 15.8C13.6 14.5 14.3 14 15 14C15.9 14 16.8 14.5 17.5 15.8" stroke="#0E7490" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}

@@ -1,6 +1,7 @@
 import type { FeatureCollection, Geometry } from 'geojson';
 import bairrosJson from './maricaBairros.json';
 import usfsJson from './maricaUsfs.json';
+import vermelhinhasJson from './maricaVermelhinhas.json';
 import type { DistrictId, DistrictInfo, PublicFacility } from '../types/integra';
 
 export const MARICA_CENTER: [number, number] = [-22.922, -42.825];
@@ -23,7 +24,24 @@ export interface RealUsf {
   coords: [number, number];
 }
 
+export interface VermelhinhaStation {
+  id: string;
+  number: number;
+  name: string;
+  address: string;
+  coords: [number, number];
+  docks: number;
+  activatedAt: string;
+  isKids: boolean;
+}
+
 export const MARICA_REAL_USFS: RealUsf[] = usfsJson as RealUsf[];
+export const MARICA_VERMELHINHAS: VermelhinhaStation[] =
+  vermelhinhasJson as VermelhinhaStation[];
+
+export function expandUsfName(raw: string): string {
+  return raw.replace(/^USF\s+/i, 'Unidade de Saúde da Família ');
+}
 
 export interface OfficialBairroInfo {
   name: string;

@@ -339,15 +339,57 @@ export function CombinedQueryView() {
           </select>
         </div>
 
-        <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-xs font-bold text-[#0B3B49]">
-          <input
-            type="checkbox"
-            checked={filters.multiProgramOnly}
-            onChange={(e) => updateFilter('multiProgramOnly', e.target.checked)}
-            className="h-4 w-4 accent-[#0B3B49]"
-          />
-          Exibir apenas beneficiários que recebem mais de um programa social
-        </label>
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+          <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-bold text-[#0B3B49]">
+            <input
+              type="checkbox"
+              checked={filters.multiProgramOnly}
+              onChange={(e) => updateFilter('multiProgramOnly', e.target.checked)}
+              className="h-4 w-4 accent-[#0B3B49]"
+            />
+            2+ programas sociais
+          </label>
+          <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-bold text-[#0B3B49]">
+            <input
+              type="checkbox"
+              checked={filters.cadUnicoOnly}
+              onChange={(e) => updateFilter('cadUnicoOnly', e.target.checked)}
+              className="h-4 w-4 accent-[#0B3B49]"
+            />
+            CadÚnico declarado
+          </label>
+          <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-bold text-[#0B3B49]">
+            <input
+              type="checkbox"
+              checked={filters.publicSchoolOnly}
+              onChange={(e) => updateFilter('publicSchoolOnly', e.target.checked)}
+              className="h-4 w-4 accent-[#0B3B49]"
+            />
+            Aluno de escola pública
+          </label>
+          <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-bold text-[#0B3B49]">
+            <input
+              type="checkbox"
+              checked={filters.passaporteOnly}
+              onChange={(e) => updateFilter('passaporteOnly', e.target.checked)}
+              className="h-4 w-4 accent-[#0B3B49]"
+            />
+            Passaporte Universitário
+          </label>
+          <select
+            aria-label="Status do cruzamento com bases reais"
+            value={filters.crossCheckStatus}
+            onChange={(e) =>
+              updateFilter('crossCheckStatus', e.target.value as typeof filters.crossCheckStatus)
+            }
+            className="rounded-[6px] border border-[#C4D0D7] bg-white px-2.5 py-1 text-xs font-bold text-[#0B3B49]"
+          >
+            <option value="ALL">Cruzamento: todos</option>
+            <option value="CONFIRMADO">Confirmado nas bases</option>
+            <option value="DIVERGENCIA">Divergência p/ conferência</option>
+            <option value="AGUARDANDO_CRUZAMENTO">Aguardando cruzamento</option>
+          </select>
+        </div>
       </div>
 
       {/* Live Aggregated Metrics for Current Query */}

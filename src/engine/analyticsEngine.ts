@@ -26,6 +26,10 @@ export const DEFAULT_FILTER_STATE: BeneficiaryFilterState = {
   minHouseholdSize: 'ALL',
   multiProgramOnly: false,
   incomeTrend: 'ALL',
+  cadUnicoOnly: false,
+  publicSchoolOnly: false,
+  passaporteOnly: false,
+  crossCheckStatus: 'ALL',
 };
 
 export const EMPLOYMENT_LABELS: Record<EmploymentStatus, string> = {
@@ -76,10 +80,16 @@ export const ECONOMIC_SECTORS = [
 export const SOCIAL_PROGRAM_OPTIONS = [
   'Renda Básica de Cidadania (Mumbuca)',
   'Mumbuca Trabalho',
-  'Bolsa Família',
-  'Auxílio Aluguel',
+  'Mumbuca Futuro (Poupança Jovem)',
+  'Mumbuca Gestante / Mãe Maricaense',
   'Passaporte Universitário',
+  'Programa de Proteção ao Trabalhador (PPT)',
+  'Auxílio Aluguel / Locação Social',
+  'Tarifa Zero (Vermelhinhos — Ônibus)',
+  'Vermelhinhas (Bicicletas Compartilhadas)',
+  'Bolsa Família',
   'BPC / LOAS',
+  'Tarifa Social de Energia Elétrica',
 ] as const;
 
 export function normalizeSearch(value: string): string {
@@ -240,11 +250,23 @@ export function applyCombinedFilters(
     if (filters.incomeTrend !== 'ALL') {
       if (getIncomeEvolution(b).trend !== filters.incomeTrend) return false;
     }
+    if (filters.cadUnicoOnly && !b.selfDeclaration?.cadUnicoRegistered) return false;
+    if (filters.publicSchoolOnly && !b.selfDeclaration?.publicSchoolStudent) return false;
+    if (filters.passaporteOnly && !b.selfDeclaration?.passaporteUniversitario) return false;
+    if (
+      filters.crossCheckStatus !== 'ALL' &&
+      b.selfDeclaration?.crossCheckStatus !== filters.crossCheckStatus
+    ) {
+      return false;
+    }
     if (q.length > 0) {
+      const membersCpfs = (b.householdMembers ?? []).map((m) => m.cpf.replace(/\D/g, '')).join(' ');
+      const membersNames = (b.householdMembers ?? []).map((m) => m.fullName).join(' ');
+      const declText = `${b.selfDeclaration?.ubsName ?? ''} ${b.selfDeclaration?.crasName ?? ''} ${b.selfDeclaration?.schoolName ?? ''} ${b.selfDeclaration?.universityName ?? ''} ${b.selfDeclaration?.universityCourse ?? ''}`;
       const hay = normalizeSearch(
-        `${b.fullName} ${b.neighborhood} ${b.profession} ${b.employerName} ${b.economicSector}`
+        `${b.fullName} ${membersNames} ${b.neighborhood} ${b.profession} ${b.employerName} ${b.economicSector} ${declText}`
       );
-      const cpfDigits = b.cpf.replace(/\D/g, '');
+      const cpfDigits = `${b.cpf.replace(/\D/g, '')} ${membersCpfs}`;
       const matchText = hay.includes(q);
       const matchCpf = qDigits.length >= 2 && cpfDigits.includes(qDigits);
       if (!matchText && !matchCpf) return false;

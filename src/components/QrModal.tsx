@@ -25,7 +25,7 @@ export function QrModal({ open, onClose }: QrModalProps) {
   const baseUrl =
     typeof window !== 'undefined'
       ? `${window.location.origin}${window.location.pathname}`
-      : 'https://integra-marica.vercel.app/';
+      : 'https://davidevgomes.github.io/integra-marica/';
 
   const shareUrl =
     targetMode === 'portal' ? `${baseUrl}#cadastro` : `${baseUrl}?painel=gestao`;

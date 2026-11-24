@@ -65,6 +65,12 @@ function buildExportRows(records: BeneficiaryRecord[], role: UserRole) {
     'Benefícios Sociais (R$)',
     'Renda Per Capita (R$)',
     'Programas',
+    'CadÚnico',
+    'UBS / USF Declarada',
+    'CRAS Declarado',
+    'Escola Pública',
+    'Passaporte Universitário',
+    'Cruzamento Bases',
     'Evolução Renda',
     'Status Cadastral',
     'Próximo Vencimento',
@@ -72,6 +78,7 @@ function buildExportRows(records: BeneficiaryRecord[], role: UserRole) {
 
   const rows = records.map((b) => {
     const evo = getIncomeEvolution(b);
+    const decl = b.selfDeclaration;
     return [
       b.id,
       isAuthorized ? b.fullName : pseudonymizeName(b.fullName),
@@ -93,6 +100,14 @@ function buildExportRows(records: BeneficiaryRecord[], role: UserRole) {
       getSocialBenefitsTotal(b),
       getPerCapitaIncome(b),
       b.socialPrograms.map((p) => p.name).join(' | '),
+      decl?.cadUnicoRegistered ? 'Sim' : 'Não',
+      decl?.ubsRegistered ? decl.ubsName ?? 'Sim' : 'Não',
+      decl?.crasRegistered ? decl.crasName ?? 'Sim' : 'Não',
+      decl?.publicSchoolStudent ? decl.schoolName ?? 'Sim' : 'Não',
+      decl?.passaporteUniversitario
+        ? `${decl.universityName ?? ''} (${decl.universityCourse ?? ''})`
+        : 'Não',
+      decl?.crossCheckStatus ?? 'AGUARDANDO_CRUZAMENTO',
       evo.trend === 'AUMENTO'
         ? `Aumento (+R$ ${evo.deltaValue})`
         : evo.trend === 'REDUCAO'
@@ -109,7 +124,7 @@ function buildExportRows(records: BeneficiaryRecord[], role: UserRole) {
 export function exportBeneficiariesCsv(
   records: BeneficiaryRecord[],
   role: UserRole,
-  filenamePrefix = 'integra-marica-relatorio'
+  filenamePrefix = 'id-marica-relatorio'
 ) {
   const { headers, rows } = buildExportRows(records, role);
   const lines = [
@@ -127,7 +142,7 @@ export function exportBeneficiariesCsv(
 export function exportBeneficiariesExcel(
   records: BeneficiaryRecord[],
   role: UserRole,
-  filenamePrefix = 'integra-marica-relatorio'
+  filenamePrefix = 'id-marica-relatorio'
 ) {
   const { headers, rows } = buildExportRows(records, role);
   const headerXml = `<Row>${headers

@@ -429,6 +429,87 @@ export function TerritoryMapView() {
                       </div>
                     </div>
 
+                    {/* Household CPFs Linked */}
+                    {(activeBeneficiary.householdMembers ?? []).length > 0 && (
+                      <div className="rounded-[8px] border border-[#DCE3E8] bg-white p-3 text-xs">
+                        <div className="font-bold text-[#0B3B49]">
+                          Moradores vinculados por CPF ({activeBeneficiary.householdMembers?.length})
+                        </div>
+                        <div className="mt-1.5 space-y-1">
+                          {activeBeneficiary.householdMembers?.map((m) => (
+                            <div
+                              key={m.id}
+                              className="flex items-center justify-between gap-2 text-[11px] text-[#52646D]"
+                            >
+                              <span className="truncate font-semibold text-[#11222B]">
+                                {m.fullName} ({m.relationship})
+                              </span>
+                              <span className="font-code shrink-0 text-[#0B3B49]">{m.cpf}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Policy Self-Declaration vs Official Base Cross-Check */}
+                    {activeBeneficiary.selfDeclaration && (
+                      <div className="rounded-[8px] border border-[#0E7490]/30 bg-[#EDF7FA] p-3 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-bold text-[#0B3B49]">
+                            Autodeclaração × Cruzamento
+                          </span>
+                          <span
+                            className={`rounded-[4px] px-2 py-0.5 text-[10px] font-bold ${
+                              activeBeneficiary.selfDeclaration.crossCheckStatus === 'CONFIRMADO'
+                                ? 'bg-[#E6F4ED] text-[#156F48]'
+                                : activeBeneficiary.selfDeclaration.crossCheckStatus === 'DIVERGENCIA'
+                                  ? 'bg-[#FDE8E6] text-[#B52B1E]'
+                                  : 'bg-[#FEF3DC] text-[#8A5600]'
+                            }`}
+                          >
+                            {activeBeneficiary.selfDeclaration.crossCheckStatus === 'CONFIRMADO'
+                              ? 'Confirmado'
+                              : activeBeneficiary.selfDeclaration.crossCheckStatus === 'DIVERGENCIA'
+                                ? 'Divergência'
+                                : 'Aguardando'}
+                          </span>
+                        </div>
+                        <div className="mt-2 space-y-1 text-[11px] text-[#3B5560]">
+                          <div>
+                            <strong>CadÚnico:</strong>{' '}
+                            {activeBeneficiary.selfDeclaration.cadUnicoRegistered
+                              ? `Sim (NIS ${activeBeneficiary.selfDeclaration.nis ?? 'informado'})`
+                              : 'Não'}
+                          </div>
+                          <div>
+                            <strong>UBS/USF:</strong>{' '}
+                            {activeBeneficiary.selfDeclaration.ubsRegistered
+                              ? activeBeneficiary.selfDeclaration.ubsName
+                              : 'Não informada'}
+                          </div>
+                          <div>
+                            <strong>CRAS:</strong>{' '}
+                            {activeBeneficiary.selfDeclaration.crasRegistered
+                              ? activeBeneficiary.selfDeclaration.crasName
+                              : 'Não informado'}
+                          </div>
+                          {activeBeneficiary.selfDeclaration.publicSchoolStudent && (
+                            <div>
+                              <strong>Escola pública:</strong>{' '}
+                              {activeBeneficiary.selfDeclaration.schoolName}
+                            </div>
+                          )}
+                          {activeBeneficiary.selfDeclaration.passaporteUniversitario && (
+                            <div>
+                              <strong>Passaporte Univ.:</strong>{' '}
+                              {activeBeneficiary.selfDeclaration.universityName} (
+                              {activeBeneficiary.selfDeclaration.universityCourse})
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Longitudinal Evolution Timeline */}
                     <div className="rounded-[8px] border border-[#DCE3E8] bg-[#F8FAFB] p-3.5">
                       <div className="flex items-center justify-between gap-2">

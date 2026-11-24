@@ -1,0 +1,886 @@
+[
+  {
+    "id": "verm-1",
+    "number": 1,
+    "name": "Praça de Itapeba",
+    "address": "Rua Abreu Sodré",
+    "coords": [
+      -22.90875,
+      -42.83561
+    ],
+    "docks": 14,
+    "activatedAt": "2024-06-01",
+    "isKids": false
+  },
+  {
+    "id": "verm-2",
+    "number": 2,
+    "name": "CEU",
+    "address": "Rod. Ernani do Amaral Peixoto",
+    "coords": [
+      -22.90899,
+      -42.82719
+    ],
+    "docks": 12,
+    "activatedAt": "2024-08-15",
+    "isKids": false
+  },
+  {
+    "id": "verm-3",
+    "number": 3,
+    "name": "Mumbuca",
+    "address": "Rua Joaquim Eugênio dos Santos",
+    "coords": [
+      -22.913713,
+      -42.820721
+    ],
+    "docks": 16,
+    "activatedAt": "2024-06-05",
+    "isKids": false
+  },
+  {
+    "id": "verm-4",
+    "number": 4,
+    "name": "Rodoviária",
+    "address": "Av. Roberto Silveira",
+    "coords": [
+      -22.916955,
+      -42.815145
+    ],
+    "docks": 12,
+    "activatedAt": "2024-06-04",
+    "isKids": false
+  },
+  {
+    "id": "verm-5",
+    "number": 5,
+    "name": "Prefeitura",
+    "address": "Rua Álvares de Castro",
+    "coords": [
+      -22.92041,
+      -42.821558
+    ],
+    "docks": 14,
+    "activatedAt": "2024-06-01",
+    "isKids": false
+  },
+  {
+    "id": "verm-6",
+    "number": 6,
+    "name": "Praça do Barroco",
+    "address": "Av. Carlos Mariguella",
+    "coords": [
+      -22.9573,
+      -42.98019
+    ],
+    "docks": 14,
+    "activatedAt": "2024-06-06",
+    "isKids": false
+  },
+  {
+    "id": "verm-7",
+    "number": 7,
+    "name": "Fórum",
+    "address": "Rua Álvares de Castro",
+    "coords": [
+      -22.92363,
+      -42.82677
+    ],
+    "docks": 14,
+    "activatedAt": "2024-06-03",
+    "isKids": false
+  },
+  {
+    "id": "verm-8",
+    "number": 8,
+    "name": "Praça Araçatiba",
+    "address": "Rua Álvares de Castro",
+    "coords": [
+      -22.92816,
+      -42.82627
+    ],
+    "docks": 14,
+    "activatedAt": "2024-07-24",
+    "isKids": false
+  },
+  {
+    "id": "verm-9",
+    "number": 9,
+    "name": "Orlando de Barros Pimentel",
+    "address": "Rua Álvares de Castro",
+    "coords": [
+      -22.91964,
+      -42.81926
+    ],
+    "docks": 14,
+    "activatedAt": "2024-06-18",
+    "isKids": false
+  },
+  {
+    "id": "verm-10",
+    "number": 10,
+    "name": "Boqueirão II",
+    "address": "Rua Álvares de Castro",
+    "coords": [
+      -22.93786,
+      -42.82958
+    ],
+    "docks": 14,
+    "activatedAt": "2024-06-03",
+    "isKids": false
+  },
+  {
+    "id": "verm-11",
+    "number": 11,
+    "name": "Boqueirão III",
+    "address": "Av. Ivan Mundim",
+    "coords": [
+      -22.94877,
+      -42.82252
+    ],
+    "docks": 14,
+    "activatedAt": "2024-06-04",
+    "isKids": false
+  },
+  {
+    "id": "verm-12",
+    "number": 12,
+    "name": "Parque Nanci",
+    "address": "Rua das Águias",
+    "coords": [
+      -22.92126,
+      -42.84681
+    ],
+    "docks": 14,
+    "activatedAt": "2024-08-21",
+    "isKids": false
+  },
+  {
+    "id": "verm-13",
+    "number": 13,
+    "name": "Rodoviária Itaipuaçu",
+    "address": "Rua Prof. Cardoso de Menezes",
+    "coords": [
+      -22.96253,
+      -42.9623
+    ],
+    "docks": 16,
+    "activatedAt": "2024-07-31",
+    "isKids": false
+  },
+  {
+    "id": "verm-14",
+    "number": 14,
+    "name": "Itaipuaçu I",
+    "address": "Av. Beira Mar",
+    "coords": [
+      -22.96984,
+      -42.96274
+    ],
+    "docks": 16,
+    "activatedAt": "2024-07-23",
+    "isKids": false
+  },
+  {
+    "id": "verm-15",
+    "number": 15,
+    "name": "Itaipuaçu II",
+    "address": "Av. Beira Mar",
+    "coords": [
+      -22.96915,
+      -42.97924
+    ],
+    "docks": 16,
+    "activatedAt": "2024-07-29",
+    "isKids": false
+  },
+  {
+    "id": "verm-16",
+    "number": 16,
+    "name": "Orla Itapeba",
+    "address": "R. Ver. Aloísio Rangel de Freitas",
+    "coords": [
+      -22.91903,
+      -42.84123
+    ],
+    "docks": 14,
+    "activatedAt": "2024-08-09",
+    "isKids": false
+  },
+  {
+    "id": "verm-17",
+    "number": 17,
+    "name": "Barra I",
+    "address": "Av. João Saldanha",
+    "coords": [
+      -22.95725,
+      -42.8275
+    ],
+    "docks": 16,
+    "activatedAt": "2024-09-04",
+    "isKids": false
+  },
+  {
+    "id": "verm-18",
+    "number": 18,
+    "name": "Barra II",
+    "address": "Av. Litorânea",
+    "coords": [
+      -22.96125,
+      -42.82247
+    ],
+    "docks": 14,
+    "activatedAt": "2024-08-13",
+    "isKids": false
+  },
+  {
+    "id": "verm-19",
+    "number": 19,
+    "name": "Marielle Franco",
+    "address": "Rua João Frejat",
+    "coords": [
+      -22.95727,
+      -42.81458
+    ],
+    "docks": 14,
+    "activatedAt": "2024-08-02",
+    "isKids": false
+  },
+  {
+    "id": "verm-20",
+    "number": 20,
+    "name": "Praça de Guaratiba",
+    "address": "Av. Reginaldo Zeidan",
+    "coords": [
+      -22.9573,
+      -42.79258
+    ],
+    "docks": 12,
+    "activatedAt": "2024-08-15",
+    "isKids": false
+  },
+  {
+    "id": "verm-21",
+    "number": 21,
+    "name": "Parque Linear",
+    "address": "Rua Uirapurus",
+    "coords": [
+      -22.910697,
+      -42.805998
+    ],
+    "docks": 14,
+    "activatedAt": "2024-08-23",
+    "isKids": false
+  },
+  {
+    "id": "verm-22",
+    "number": 22,
+    "name": "Orla do Marine",
+    "address": "Av. Moacyr Correa",
+    "coords": [
+      -22.9355,
+      -42.8699
+    ],
+    "docks": 14,
+    "activatedAt": "2024-07-25",
+    "isKids": false
+  },
+  {
+    "id": "verm-23",
+    "number": 23,
+    "name": "Praça São José",
+    "address": "Estrada Velha de Maricá",
+    "coords": [
+      -22.937543,
+      -42.890947
+    ],
+    "docks": 14,
+    "activatedAt": "2024-08-20",
+    "isKids": false
+  },
+  {
+    "id": "verm-24",
+    "number": 24,
+    "name": "Ponta Negra",
+    "address": "Rua Dez",
+    "coords": [
+      -22.954074,
+      -42.700927
+    ],
+    "docks": 14,
+    "activatedAt": "2024-07-19",
+    "isKids": false
+  },
+  {
+    "id": "verm-25",
+    "number": 25,
+    "name": "Itaipuaçu III",
+    "address": "Av. Beira Mar, 3442",
+    "coords": [
+      -22.972598,
+      -42.937407
+    ],
+    "docks": 14,
+    "activatedAt": "2024-06-07",
+    "isKids": false
+  },
+  {
+    "id": "verm-26",
+    "number": 26,
+    "name": "Orla de Jacaroá",
+    "address": "Rua Dona Ambrosina, na Praça da Orla de Jacaroá",
+    "coords": [
+      -22.93666,
+      -42.80723
+    ],
+    "docks": 14,
+    "activatedAt": "2024-07-23",
+    "isKids": false
+  },
+  {
+    "id": "verm-27",
+    "number": 27,
+    "name": "Praça Bambuí",
+    "address": "Av. Contorno",
+    "coords": [
+      -22.94424,
+      -42.75341
+    ],
+    "docks": 14,
+    "activatedAt": "2024-09-30",
+    "isKids": false
+  },
+  {
+    "id": "verm-28",
+    "number": 28,
+    "name": "Arena do Flamengo",
+    "address": "Rua Uirapurus",
+    "coords": [
+      -22.9089,
+      -42.80447
+    ],
+    "docks": 12,
+    "activatedAt": "2024-09-30",
+    "isKids": false
+  },
+  {
+    "id": "verm-29",
+    "number": 29,
+    "name": "Itaipuaçu 4",
+    "address": "Av. da Praia, 2431 (próx. à Rua 104)",
+    "coords": [
+      -22.973874,
+      -42.927318
+    ],
+    "docks": 12,
+    "activatedAt": "2024-12-27",
+    "isKids": false
+  },
+  {
+    "id": "verm-30",
+    "number": 30,
+    "name": "Itaipuaçu 5",
+    "address": "Av. da Praia, 386 (próx. à Rua 149)",
+    "coords": [
+      -22.9723,
+      -42.90733
+    ],
+    "docks": 12,
+    "activatedAt": "2024-12-27",
+    "isKids": false
+  },
+  {
+    "id": "verm-31",
+    "number": 31,
+    "name": "Condado I",
+    "address": "Alameda Maricá, 31 — Condado",
+    "coords": [
+      -22.901611,
+      -42.795139
+    ],
+    "docks": 14,
+    "activatedAt": "2025-01-20",
+    "isKids": false
+  },
+  {
+    "id": "verm-32",
+    "number": 32,
+    "name": "Condado II",
+    "address": "Rua Hibisco — Condado",
+    "coords": [
+      -22.893028,
+      -42.795722
+    ],
+    "docks": 14,
+    "activatedAt": "2025-01-20",
+    "isKids": false
+  },
+  {
+    "id": "verm-33",
+    "number": 33,
+    "name": "Caxito I",
+    "address": "Rua José Barbosa da Cunha, 5 — Caxito",
+    "coords": [
+      -22.907139,
+      -42.822722
+    ],
+    "docks": 14,
+    "activatedAt": "2025-01-20",
+    "isKids": false
+  },
+  {
+    "id": "verm-34",
+    "number": 34,
+    "name": "Caxito II",
+    "address": "Rua Cecília Gonçalves Mataruna, 843 — Caxito",
+    "coords": [
+      -22.89675,
+      -42.826972
+    ],
+    "docks": 12,
+    "activatedAt": "2025-01-20",
+    "isKids": false
+  },
+  {
+    "id": "verm-35",
+    "number": 35,
+    "name": "Aeroporto",
+    "address": "Rua Jovino Duarte de Oliveira (em frente ao Aeroporto)",
+    "coords": [
+      -22.919667,
+      -42.827194
+    ],
+    "docks": 12,
+    "activatedAt": "2025-01-20",
+    "isKids": false
+  },
+  {
+    "id": "verm-36",
+    "number": 36,
+    "name": "Estádio João Saldanha",
+    "address": "Rua Cento e Sete (em frente ao Estádio João Saldanha)",
+    "coords": [
+      -22.952667,
+      -42.747583
+    ],
+    "docks": 14,
+    "activatedAt": "2025-01-20",
+    "isKids": false
+  },
+  {
+    "id": "verm-37",
+    "number": 37,
+    "name": "Amendoeiras",
+    "address": "Rua Mário Leve",
+    "coords": [
+      -22.940488,
+      -42.876178
+    ],
+    "docks": 12,
+    "activatedAt": "2025-02-24",
+    "isKids": false
+  },
+  {
+    "id": "verm-38",
+    "number": 38,
+    "name": "São José 1",
+    "address": "Rod. Ernani do Amaral Peixoto, km 21",
+    "coords": [
+      -22.933021,
+      -42.89071
+    ],
+    "docks": 12,
+    "activatedAt": "2025-02-24",
+    "isKids": false
+  },
+  {
+    "id": "verm-39",
+    "number": 39,
+    "name": "Inoã 1",
+    "address": "Rod. Amaral Peixoto",
+    "coords": [
+      -22.901463,
+      -42.93879
+    ],
+    "docks": 12,
+    "activatedAt": "2025-03-27",
+    "isKids": false
+  },
+  {
+    "id": "verm-40",
+    "number": 40,
+    "name": "Praça Spar",
+    "address": "Av. Luiz Genésio",
+    "coords": [
+      -22.897949,
+      -42.937225
+    ],
+    "docks": 12,
+    "activatedAt": "2025-03-27",
+    "isKids": false
+  },
+  {
+    "id": "verm-41",
+    "number": 41,
+    "name": "MCMV Inoã",
+    "address": "Rua do Bosque (fundo)",
+    "coords": [
+      -22.90526,
+      -42.92122
+    ],
+    "docks": 14,
+    "activatedAt": "2025-05-26",
+    "isKids": false
+  },
+  {
+    "id": "verm-42",
+    "number": 42,
+    "name": "MCMV Itaipuaçu",
+    "address": "Rua Antônio de Neiva Moreira",
+    "coords": [
+      -22.9447,
+      -42.95423
+    ],
+    "docks": 14,
+    "activatedAt": "2025-05-26",
+    "isKids": false
+  },
+  {
+    "id": "verm-43",
+    "number": 43,
+    "name": "Nossa Senhora de Fátima",
+    "address": "Av. Carlos Mariguella",
+    "coords": [
+      -22.94443,
+      -42.961599
+    ],
+    "docks": 14,
+    "activatedAt": "2025-07-02",
+    "isKids": false
+  },
+  {
+    "id": "verm-44",
+    "number": 44,
+    "name": "Inoã 2",
+    "address": "Rua Arino de Souza Matos",
+    "coords": [
+      -22.913508,
+      -42.927685
+    ],
+    "docks": 12,
+    "activatedAt": "2025-07-02",
+    "isKids": false
+  },
+  {
+    "id": "verm-45",
+    "number": 45,
+    "name": "Itaocaia Valley",
+    "address": "Av. Itaocaia Valley, 01 — Inoã",
+    "coords": [
+      -22.915826,
+      -42.951361
+    ],
+    "docks": 12,
+    "activatedAt": "2025-08-15",
+    "isKids": false
+  },
+  {
+    "id": "verm-46",
+    "number": 46,
+    "name": "Amizade",
+    "address": "Av. 3, 55 — Araçatiba",
+    "coords": [
+      -22.933324,
+      -42.814708
+    ],
+    "docks": 12,
+    "activatedAt": "2025-08-15",
+    "isKids": false
+  },
+  {
+    "id": "verm-47",
+    "number": 47,
+    "name": "Marquês de Maricá",
+    "address": "Rua Marquês de Maricá",
+    "coords": [
+      -22.906903,
+      -42.797104
+    ],
+    "docks": 14,
+    "activatedAt": "2025-10-01",
+    "isKids": false
+  },
+  {
+    "id": "verm-48",
+    "number": 48,
+    "name": "Praça Manu Manuela",
+    "address": "Rua 25",
+    "coords": [
+      -22.939252,
+      -42.905859
+    ],
+    "docks": 12,
+    "activatedAt": "2025-10-06",
+    "isKids": false
+  },
+  {
+    "id": "verm-49",
+    "number": 49,
+    "name": "Ernesto Che Guevara",
+    "address": "Rod. Amaral Peixoto, km 25",
+    "coords": [
+      -22.928218,
+      -42.868928
+    ],
+    "docks": 12,
+    "activatedAt": "2025-11-19",
+    "isKids": false
+  },
+  {
+    "id": "verm-50",
+    "number": 50,
+    "name": "Boqueirão 1",
+    "address": "Av. Prefeito Odenir Francisco da Costa",
+    "coords": [
+      -22.928619,
+      -42.821741
+    ],
+    "docks": 12,
+    "activatedAt": "2025-12-23",
+    "isKids": false
+  },
+  {
+    "id": "verm-51",
+    "number": 51,
+    "name": "Casa Darcy Ribeiro",
+    "address": "Rua 119",
+    "coords": [
+      -22.956152,
+      -42.738883
+    ],
+    "docks": 12,
+    "activatedAt": "2025-12-03",
+    "isKids": false
+  },
+  {
+    "id": "verm-52",
+    "number": 52,
+    "name": "Orla de Ponta Negra",
+    "address": "R. Carolino J. do Nascimento",
+    "coords": [
+      -22.956579,
+      -42.697561
+    ],
+    "docks": 12,
+    "activatedAt": "2025-12-05",
+    "isKids": false
+  },
+  {
+    "id": "verm-53",
+    "number": 53,
+    "name": "Centro de Ponta Negra",
+    "address": "Av. Prefeito Arthurzinho Rangel",
+    "coords": [
+      -22.953837,
+      -42.696144
+    ],
+    "docks": 16,
+    "activatedAt": "2025-12-05",
+    "isKids": false
+  },
+  {
+    "id": "verm-54",
+    "number": 54,
+    "name": "Flamengo I",
+    "address": "Av. Roberto Silveira — Flamengo",
+    "coords": [
+      -22.904823,
+      -42.802249
+    ],
+    "docks": 12,
+    "activatedAt": "2026-05-26",
+    "isKids": false
+  },
+  {
+    "id": "verm-55",
+    "number": 55,
+    "name": "CEPT Itaipuaçu",
+    "address": "Rua Elisa Vieira Veras",
+    "coords": [
+      -22.956907,
+      -42.954094
+    ],
+    "docks": 12,
+    "activatedAt": "2026-05-26",
+    "isKids": false
+  },
+  {
+    "id": "verm-56",
+    "number": 56,
+    "name": "Subprefeitura Itaipuaçu",
+    "address": "Rua 8 — Centro Itaipuaçu",
+    "coords": [
+      -22.964467,
+      -42.968397
+    ],
+    "docks": 12,
+    "activatedAt": "2026-07-20",
+    "isKids": false
+  },
+  {
+    "id": "verm-57",
+    "number": 57,
+    "name": "Ponta Grossa",
+    "address": "Rua Raimundo Drumond",
+    "coords": [
+      -22.922411,
+      -42.855408
+    ],
+    "docks": 14,
+    "activatedAt": "2026-09-03",
+    "isKids": false
+  },
+  {
+    "id": "verm-58",
+    "number": 58,
+    "name": "Praça de Cordeirinho",
+    "address": "Rua Verônica Coutinho Pinheiro Dias",
+    "coords": [
+      -22.955604,
+      -42.759454
+    ],
+    "docks": 14,
+    "activatedAt": "2026-09-03",
+    "isKids": false
+  },
+  {
+    "id": "verm-101",
+    "number": 101,
+    "name": "Orlando de Barros Pimentel — Infantil",
+    "address": "Rua Álvares de Castro",
+    "coords": [
+      -22.91964,
+      -42.81926
+    ],
+    "docks": 8,
+    "activatedAt": "2024-05-22",
+    "isKids": true
+  },
+  {
+    "id": "verm-102",
+    "number": 102,
+    "name": "Praça Araçatiba — Infantil",
+    "address": "Rua Álvares de Castro",
+    "coords": [
+      -22.92816,
+      -42.82627
+    ],
+    "docks": 8,
+    "activatedAt": "2024-05-22",
+    "isKids": true
+  },
+  {
+    "id": "verm-103",
+    "number": 103,
+    "name": "Itaipuaçu I — Infantil",
+    "address": "Av. Beira Mar, 6290",
+    "coords": [
+      -22.969692,
+      -42.964173
+    ],
+    "docks": 8,
+    "activatedAt": "2024-05-23",
+    "isKids": true
+  },
+  {
+    "id": "verm-104",
+    "number": 104,
+    "name": "Praça de Ponta Negra — Infantil",
+    "address": "Rua Dez, na Praça",
+    "coords": [
+      -22.95402,
+      -42.70061
+    ],
+    "docks": 8,
+    "activatedAt": "2024-05-23",
+    "isKids": true
+  },
+  {
+    "id": "verm-105",
+    "number": 105,
+    "name": "Orla do Marine — Infantil",
+    "address": "Rua Euclides Paula da Silva",
+    "coords": [
+      -22.91364,
+      -42.93039
+    ],
+    "docks": 8,
+    "activatedAt": "2024-05-24",
+    "isKids": true
+  },
+  {
+    "id": "verm-106",
+    "number": 106,
+    "name": "Orla de Jacaroá — Infantil",
+    "address": "Rua Dona Ambrosina, na Praça da Orla de Jacaroá",
+    "coords": [
+      -22.93666,
+      -42.80723
+    ],
+    "docks": 8,
+    "activatedAt": "2024-07-23",
+    "isKids": true
+  },
+  {
+    "id": "verm-107",
+    "number": 107,
+    "name": "Praça de Bambuí — Infantil",
+    "address": "Av. Contorno",
+    "coords": [
+      -22.94424,
+      -42.75341
+    ],
+    "docks": 8,
+    "activatedAt": "2024-09-30",
+    "isKids": true
+  },
+  {
+    "id": "verm-108",
+    "number": 108,
+    "name": "Parque Nanci — Infantil",
+    "address": "Rua das Águias",
+    "coords": [
+      -22.92126,
+      -42.84681
+    ],
+    "docks": 8,
+    "activatedAt": "2024-12-27",
+    "isKids": true
+  },
+  {
+    "id": "verm-109",
+    "number": 109,
+    "name": "MCMV Inoã — Infantil",
+    "address": "Rua do Bosque (fundo)",
+    "coords": [
+      -22.90526,
+      -42.92122
+    ],
+    "docks": 8,
+    "activatedAt": "2025-05-26",
+    "isKids": true
+  },
+  {
+    "id": "verm-110",
+    "number": 110,
+    "name": "MCMV Itaipuaçu — Infantil",
+    "address": "Rua Antônio de Neiva Moreira",
+    "coords": [
+      -22.9447,
+      -42.95423
+    ],
+    "docks": 8,
+    "activatedAt": "2025-05-26",
+    "isKids": true
+  }
+]

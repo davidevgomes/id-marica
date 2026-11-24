@@ -64,9 +64,9 @@ export function IndicatorsEvolutionView() {
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#0E7490]" />
         <p className="leading-relaxed">
           <strong>Nota metodológica:</strong> todos os indicadores abaixo representam{' '}
-          <strong>exclusivamente a população cadastrada</strong> no Integra Maricá (n ={' '}
-          {summary.total} beneficiários no recorte atual), não devendo ser interpretados
-          automaticamente como estatísticas do total populacional do município.
+          <strong>exclusivamente a população cadastrada</strong> no ID Maricá (n = {summary.total}{' '}
+          beneficiários no recorte atual), não devendo ser interpretados automaticamente como
+          estatísticas do total populacional do município.
         </p>
       </div>
 

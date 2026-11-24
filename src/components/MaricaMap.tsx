@@ -1,13 +1,16 @@
 import L from 'leaflet';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Layers, Lock, Map as MapIcon, RotateCcw, Satellite, X } from 'lucide-react';
+import { MARICA_CRAS_UNITS } from '../data/maricaCatalog';
 import {
   DISTRICT_BY_ID,
+  expandUsfName,
   MARICA_BAIRROS_GEOJSON,
   MARICA_CENTER,
   MARICA_DEFAULT_ZOOM,
   MARICA_DISTRICTS,
   MARICA_REAL_USFS,
+  MARICA_VERMELHINHAS,
 } from '../data/maricaGeo';
 import {
   computeSocioeconomicSummary,
@@ -19,6 +22,8 @@ import {
 import type { BeneficiaryRecord, DistrictId } from '../types/integra';
 import {
   LayerBairrosIcon,
+  LayerBikeIcon,
+  LayerCrasIcon,
   LayerHealthIcon,
   LayerHeatIcon,
   LayerSchoolIcon,
@@ -76,6 +81,8 @@ export function MaricaMap({
   const heatLayerRef = useRef<L.LayerGroup | null>(null);
   const commutingLayerRef = useRef<L.LayerGroup | null>(null);
   const usfsLayerRef = useRef<L.LayerGroup | null>(null);
+  const crasLayerRef = useRef<L.LayerGroup | null>(null);
+  const vermelhinhasLayerRef = useRef<L.LayerGroup | null>(null);
   const pointsLayerRef = useRef<L.LayerGroup | null>(null);
   const layersPopoverRef = useRef<HTMLDivElement | null>(null);
 
@@ -87,6 +94,8 @@ export function MaricaMap({
   const [showIndividualPoints, setShowIndividualPoints] = useState(canViewIndividualPoints);
   const [showCommuting, setShowCommuting] = useState(false);
   const [showUsfs, setShowUsfs] = useState(false);
+  const [showCras, setShowCras] = useState(false);
+  const [showVermelhinhas, setShowVermelhinhas] = useState(false);
 
   // Sync individual points layer with RBAC permission changes
   useEffect(() => {
@@ -148,6 +157,8 @@ export function MaricaMap({
     heatLayerRef.current = L.layerGroup().addTo(map);
     commutingLayerRef.current = L.layerGroup().addTo(map);
     usfsLayerRef.current = L.layerGroup().addTo(map);
+    crasLayerRef.current = L.layerGroup().addTo(map);
+    vermelhinhasLayerRef.current = L.layerGroup().addTo(map);
     anchorsLayerRef.current = L.layerGroup().addTo(map);
     pointsLayerRef.current = L.layerGroup().addTo(map);
 
@@ -386,13 +397,70 @@ export function MaricaMap({
         .bindPopup(
           `<div style="padding:10px 12px;min-width:210px;">
             <div style="font-size:11px;font-weight:700;color:#D93829;">Rede Municipal de Saúde</div>
-            <div style="font-size:13px;font-weight:800;color:#0B3B49;margin-top:2px;">${u.name.replace(/^USF\s+/i, 'Unidade de Saúde da Família ')}</div>
+            <div style="font-size:13px;font-weight:800;color:#0B3B49;margin-top:2px;">${expandUsfName(u.name)}</div>
             <div style="font-size:11px;color:#52646D;margin-top:2px;">${u.address}</div>
           </div>`
         )
         .addTo(layer);
     });
   }, [showUsfs]);
+
+  // 7 Real Maricá CRAS Units
+  useEffect(() => {
+    const layer = crasLayerRef.current;
+    if (!layer) return;
+    layer.clearLayers();
+    if (!showCras) return;
+
+    MARICA_CRAS_UNITS.forEach((c) => {
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="width:24px;height:24px;border-radius:6px;background:#0E7490;border:2px solid #fff;box-shadow:0 2px 6px rgba(11,59,73,0.34);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:11px;">C</div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
+      L.marker(c.coords, { icon })
+        .bindPopup(
+          `<div style="padding:10px 12px;min-width:210px;">
+            <div style="font-size:11px;font-weight:700;color:#0E7490;">Assistência Social (CadÚnico)</div>
+            <div style="font-size:13px;font-weight:800;color:#0B3B49;margin-top:2px;">${c.name}</div>
+            <div style="font-size:11px;color:#52646D;margin-top:2px;">${c.address}</div>
+            <div style="font-size:11px;font-weight:700;color:#0B3B49;margin-top:3px;">Tel.: ${c.phone}</div>
+          </div>`
+        )
+        .addTo(layer);
+    });
+  }, [showCras]);
+
+  // 68 Real Maricá Vermelhinhas Bike Stations (58 Regular + 10 Infantil)
+  useEffect(() => {
+    const layer = vermelhinhasLayerRef.current;
+    if (!layer) return;
+    layer.clearLayers();
+    if (!showVermelhinhas) return;
+
+    MARICA_VERMELHINHAS.forEach((v) => {
+      const bg = v.isKids ? '#E89B0C' : '#D93829';
+      const border = v.isKids ? '#0B3B49' : '#FFFFFF';
+      const text = v.isKids ? '#072933' : '#FFFFFF';
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="width:20px;height:20px;border-radius:999px;background:${bg};border:2px solid ${border};box-shadow:0 2px 6px rgba(11,59,73,0.36);display:flex;align-items:center;justify-content:center;color:${text};font-weight:900;font-size:9px;">${v.isKids ? 'I' : 'V'}</div>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
+      });
+      L.marker(v.coords, { icon })
+        .bindPopup(
+          `<div style="padding:10px 12px;min-width:220px;">
+            <div style="font-size:11px;font-weight:700;color:${v.isKids ? '#8A5600' : '#D93829'};">${v.isKids ? 'Estação Vermelhinha Infantil' : 'Estação Vermelhinha (Bicicleta Gratuita)'}</div>
+            <div style="font-size:13px;font-weight:800;color:#0B3B49;margin-top:2px;">#${v.number} ${v.name}</div>
+            <div style="font-size:11px;color:#52646D;margin-top:2px;">${v.address}</div>
+            <div style="font-size:11px;font-weight:700;color:#156F48;margin-top:4px;">${v.docks} posições | Ativação: ${v.activatedAt.split('-').reverse().join('/')}</div>
+          </div>`
+        )
+        .addTo(layer);
+    });
+  }, [showVermelhinhas]);
 
   // Individual Residential Points (STRICTLY gated by RBAC `canViewIndividualPoints`)
   useEffect(() => {
@@ -451,14 +519,16 @@ export function MaricaMap({
     (showHeatmap ? 1 : 0) +
     (canViewIndividualPoints && showIndividualPoints ? 1 : 0) +
     (showCommuting ? 1 : 0) +
-    (showUsfs ? 1 : 0);
+    (showUsfs ? 1 : 0) +
+    (showCras ? 1 : 0) +
+    (showVermelhinhas ? 1 : 0);
 
   return (
     <div className="isolate relative h-[480px] w-full bg-[#0E2832] sm:h-[540px] lg:h-[calc(100dvh-62px)]">
       <div ref={containerRef} className="h-full w-full" />
 
       {/* Top Floating Bar */}
-      <div className="pointer-events-none absolute inset-x-3 top-3 z-[400] flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="pointer-events-none absolute inset-x-3 top-3 z-[850] flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between">
         {/* Horizontal-scroll 5-district strip */}
         <div className="pointer-events-auto no-scrollbar flex max-w-full flex-nowrap items-center gap-1 overflow-x-auto rounded-[10px] border border-[#DCE3E8] bg-white p-1 shadow-md">
           <button
@@ -549,7 +619,7 @@ export function MaricaMap({
               id="map-layers-popover"
               role="region"
               aria-label="Camadas cartográficas do mapa"
-              className="anim-modal absolute left-0 top-11 w-[min(21rem,calc(100vw-24px))] rounded-[12px] border border-[#DCE3E8] bg-white p-3 shadow-2xl sm:left-auto sm:right-0"
+              className="anim-modal absolute left-0 top-11 max-h-[72dvh] w-[min(21rem,calc(100vw-24px))] overflow-y-auto rounded-[12px] border border-[#DCE3E8] bg-white p-3 shadow-2xl sm:left-auto sm:right-0"
             >
               <div className="flex items-center justify-between border-b border-[#EDF1F4] pb-2">
                 <div>
@@ -640,12 +710,28 @@ export function MaricaMap({
                     icon: LayerSchoolIcon,
                   },
                   {
+                    label: 'Estações Vermelhinhas (68)',
+                    desc: '58 estações adulto e 10 infantis',
+                    active: showVermelhinhas,
+                    disabled: false,
+                    toggle: () => setShowVermelhinhas((v) => !v),
+                    icon: LayerBikeIcon,
+                  },
+                  {
                     label: 'Unidades de Saúde (29)',
                     desc: 'Rede municipal de atendimento',
                     active: showUsfs,
                     disabled: false,
                     toggle: () => setShowUsfs((v) => !v),
                     icon: LayerHealthIcon,
+                  },
+                  {
+                    label: 'Unidades CRAS (7)',
+                    desc: 'Referência de assistência e CadÚnico',
+                    active: showCras,
+                    disabled: false,
+                    toggle: () => setShowCras((v) => !v),
+                    icon: LayerCrasIcon,
                   },
                 ].map((layer) => {
                   const Icon = layer.icon;
@@ -701,7 +787,7 @@ export function MaricaMap({
       </div>
 
       {/* Bottom-Left Live Cohort Telemetry Strip */}
-      <div className="pointer-events-auto absolute bottom-3 left-3 right-14 z-[400] hidden max-w-[700px] items-center justify-between gap-4 rounded-[9px] border border-white/15 bg-[#0B3B49] px-4 py-2.5 text-white shadow-lg sm:flex">
+      <div className="pointer-events-auto absolute bottom-3 left-3 right-14 z-[750] hidden max-w-[700px] items-center justify-between gap-4 rounded-[9px] border border-white/15 bg-[#0B3B49] px-4 py-2.5 text-white shadow-lg sm:flex">
         <div>
           <div className="font-display text-lg font-extrabold leading-none text-[#E89B0C] tabular-nums">
             {summary.total}

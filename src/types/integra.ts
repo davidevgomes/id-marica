@@ -50,6 +50,34 @@ export interface SocialProgramBenefit {
   monthlyValue: number;
 }
 
+export interface HouseholdMemberLink {
+  id: string;
+  fullName: string;
+  cpf: string;
+  relationship: 'Cônjuge / Companheiro(a)' | 'Filho(a)' | 'Mãe / Pai' | 'Neto(a)' | 'Irmão(ã)' | 'Outro';
+  birthDate: string;
+}
+
+export type CrossCheckStatus = 'CONFIRMADO' | 'DIVERGENCIA' | 'AGUARDANDO_CRUZAMENTO';
+
+export interface PolicySelfDeclaration {
+  cadUnicoRegistered: boolean;
+  nis?: string;
+  ubsRegistered: boolean;
+  ubsName?: string;
+  crasRegistered: boolean;
+  crasName?: string;
+  publicSchoolStudent: boolean;
+  schoolName?: string;
+  studentScope?: 'Titular' | 'Dependente(s)' | 'Titular e dependente(s)';
+  passaporteUniversitario: boolean;
+  universityName?: string;
+  universityCourse?: string;
+  declaredPolicies: string[];
+  crossCheckStatus: CrossCheckStatus;
+  crossCheckNotes: string;
+}
+
 export interface BeneficiaryDocuments {
   idDocAttached: boolean;
   idDocName?: string;
@@ -95,6 +123,8 @@ export interface BeneficiaryRecord {
   householdSize: number;
   dependentsCount: number;
   familyComposition: string;
+  householdMembers?: HouseholdMemberLink[];
+  selfDeclaration?: PolicySelfDeclaration;
 
   // Profissional e econômico
   profession: string;
@@ -146,6 +176,10 @@ export interface BeneficiaryFilterState {
   minHouseholdSize: 'ALL' | '2' | '3' | '4' | '5';
   multiProgramOnly: boolean;
   incomeTrend: IncomeTrend | 'ALL';
+  cadUnicoOnly: boolean;
+  publicSchoolOnly: boolean;
+  passaporteOnly: boolean;
+  crossCheckStatus: CrossCheckStatus | 'ALL';
 }
 
 export interface AuditLogEntry {

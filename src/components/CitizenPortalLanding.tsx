@@ -70,7 +70,7 @@ export function CitizenPortalLanding() {
     { href: '#inicio', label: 'Início' },
     { href: '#cadastro', label: 'Cadastro' },
     { href: '#como-funciona', label: 'Ciclo trimestral' },
-    { href: '#apoio', label: 'Onde ir' },
+    { href: '#apoio', label: 'Equipamentos' },
     { href: '#duvidas', label: 'Dúvidas' },
   ];
 
@@ -253,16 +253,16 @@ export function CitizenPortalLanding() {
           <div>
             <div className="anim-hero-1 inline-flex items-center gap-2.5 text-sm font-bold text-[#E89B0C]">
               <span className="h-[3px] w-8 bg-[#E89B0C]" />
-              Cadastro Socioeconômico de Maricá
+              ID Maricá — Identidade Cidadã e Cadastro Social
             </div>
 
             <h1 className="anim-hero-2 font-display mt-5 max-w-2xl text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-[60px]">
-              Seu cadastro sempre em dia, do jeito mais simples
+              Seu cadastro em Maricá sempre em dia
             </h1>
 
             <p className="anim-hero-3 mt-5 max-w-xl text-base leading-relaxed text-[#E3EEF2] sm:text-lg">
-              Atualize seus dados pessoais, profissionais e de moradia a cada 3 meses pelo celular
-              ou presencialmente. O histórico completo é preservado e{' '}
+              Vincule cada morador da casa pelo CPF, declare as políticas públicas que você acessa
+              e encontre equipamentos públicos perto de você. O histórico é preservado e{' '}
               <strong className="text-white">nenhum benefício é suspenso automaticamente</strong>.
             </p>
 
@@ -271,25 +271,17 @@ export function CitizenPortalLanding() {
                 href="#cadastro"
                 className="inline-flex min-h-[54px] items-center justify-center rounded-[8px] bg-[#D93829] px-7 py-3.5 text-base font-extrabold text-white transition-all hover:bg-[#B52B1E] active:scale-[0.98]"
               >
-                Acessar meu cadastro
+                Acessar meu ID Maricá
               </a>
               <a
                 href="#apoio"
                 className="inline-flex min-h-[54px] items-center justify-center rounded-[8px] border border-white/40 bg-[#072933]/65 px-6 py-3.5 text-base font-bold text-white transition-colors hover:bg-white/15"
               >
-                Unidade de Saúde perto de mim
+                Equipamentos públicos perto de mim
               </a>
             </div>
 
             <div className="anim-hero-4 mt-12 grid max-w-xl grid-cols-3 gap-6 border-t border-white/20 pt-6">
-              <div>
-                <div className="font-display text-3xl font-extrabold text-[#E89B0C] tabular-nums sm:text-4xl">
-                  5
-                </div>
-                <div className="mt-1 text-xs font-medium text-[#D0E1E7] sm:text-sm">
-                  Distritos integrados
-                </div>
-              </div>
               <div>
                 <div className="font-display text-3xl font-extrabold text-[#E89B0C] tabular-nums sm:text-4xl">
                   50
@@ -300,10 +292,18 @@ export function CitizenPortalLanding() {
               </div>
               <div>
                 <div className="font-display text-3xl font-extrabold text-[#E89B0C] tabular-nums sm:text-4xl">
-                  90 dias
+                  114
                 </div>
                 <div className="mt-1 text-xs font-medium text-[#D0E1E7] sm:text-sm">
-                  Ciclo de atualização
+                  Equipamentos públicos
+                </div>
+              </div>
+              <div>
+                <div className="font-display text-3xl font-extrabold text-[#E89B0C] tabular-nums sm:text-4xl">
+                  68
+                </div>
+                <div className="mt-1 text-xs font-medium text-[#D0E1E7] sm:text-sm">
+                  Estações Vermelhinhas
                 </div>
               </div>
             </div>
@@ -396,12 +396,14 @@ export function CitizenPortalLanding() {
           <div className="mb-8 max-w-3xl">
             <div className="h-[4px] w-14 bg-[#0E7490]" />
             <h2 className="font-display mt-4 text-3xl font-extrabold tracking-tight text-[#0B3B49] sm:text-4xl">
-              Atendimento presencial perto da sua casa
+              Equipamentos públicos perto de mim
             </h2>
             <p className="mt-3 text-base leading-relaxed text-[#52646D] sm:text-lg">
-              Prefere fazer o cadastro ou a atualização com ajuda presencial? Encontre no mapa a{' '}
-              <strong className="text-[#0B3B49]">Unidade de Saúde da Família</strong> mais próxima
-              ou procure o CRAS do seu distrito.
+              Localize em Maricá as <strong className="text-[#0B3B49]">29 Unidades de Saúde da Família</strong>,{' '}
+              <strong className="text-[#0B3B49]">7 CRAS</strong>,{' '}
+              <strong className="text-[#0B3B49]">Escolas Municipais</strong> e as{' '}
+              <strong className="text-[#0B3B49]">68 estações das Vermelhinhas</strong> (adulto e
+              infantil) mais próximas da sua localização.
             </p>
           </div>
 

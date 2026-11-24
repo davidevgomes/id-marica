@@ -20,7 +20,7 @@ import type {
   UserRole,
 } from '../types/integra';
 
-const STORAGE_KEY = 'integra_marica_rework_v2';
+const STORAGE_KEY = 'id_marica_v3';
 
 export interface RoleProfile {
   role: UserRole;

@@ -1,6 +1,18 @@
-import type { AuditLogEntry, BeneficiaryRecord } from '../types/integra';
+import {
+  MARICA_CRAS_UNITS,
+  MARICA_MUNICIPAL_SCHOOLS,
+  PASSAPORTE_COURSES,
+  PASSAPORTE_UNIVERSITIES,
+} from './maricaCatalog';
+import { calculateDistanceMeters, expandUsfName, MARICA_REAL_USFS } from './maricaGeo';
+import type {
+  AuditLogEntry,
+  BeneficiaryRecord,
+  CrossCheckStatus,
+  HouseholdMemberLink,
+} from '../types/integra';
 
-export const SEED_BENEFICIARIES: BeneficiaryRecord[] = [
+const RAW_SEED_BENEFICIARIES: BeneficiaryRecord[] = [
   // === ITAIPUAÇU (4º DISTRITO) — inclui 5 casos CLT + <= 2 SM + família >= 4 integrantes ===
   {
     id: 'BEN-001',
@@ -2366,6 +2378,121 @@ export const SEED_BENEFICIARIES: BeneficiaryRecord[] = [
     ],
   },
 ];
+
+const SAMPLE_MEMBER_NAMES = [
+  'Lucas',
+  'Ana Clara',
+  'Pedro Henrique',
+  'Mariana',
+  'Rafael',
+  'Beatriz',
+  'Davi',
+  'Júlia',
+  'Matheus',
+  'Sofia',
+];
+
+function buildMemberCpf(seedIdx: number, memberIdx: number): string {
+  const a = String(110 + ((seedIdx * 37 + memberIdx * 19) % 850)).padStart(3, '0');
+  const b = String(200 + ((seedIdx * 53 + memberIdx * 29) % 750)).padStart(3, '0');
+  const c = String(150 + ((seedIdx * 41 + memberIdx * 31) % 820)).padStart(3, '0');
+  const d = String(10 + ((seedIdx * 17 + memberIdx * 13) % 89)).padStart(2, '0');
+  return `${a}.${b}.${c}-${d}`;
+}
+
+function enrichBeneficiaryRecord(b: BeneficiaryRecord, idx: number): BeneficiaryRecord {
+  const surname = b.fullName.split(' ').slice(-1)[0] || 'Silva';
+  const extraCount = Math.max(0, b.householdSize - 1);
+  const householdMembers: HouseholdMemberLink[] = Array.from({ length: extraCount }, (_, mIdx) => {
+    const isPartner =
+      mIdx === 0 &&
+      (b.maritalStatus === 'Casado(a)' || b.maritalStatus === 'União estável');
+    const rel: HouseholdMemberLink['relationship'] = isPartner
+      ? 'Cônjuge / Companheiro(a)'
+      : b.familyComposition.toLowerCase().includes('neto')
+        ? 'Neto(a)'
+        : b.familyComposition.toLowerCase().includes('mãe') && mIdx === extraCount - 1
+          ? 'Mãe / Pai'
+          : 'Filho(a)';
+    const birthYear = isPartner
+      ? Number(b.birthDate.slice(0, 4)) + (mIdx % 2 === 0 ? 1 : -2)
+      : rel === 'Mãe / Pai'
+        ? 1962
+        : 2012 + ((idx + mIdx * 2) % 10);
+    return {
+      id: `${b.id}-M${mIdx + 1}`,
+      fullName: `${SAMPLE_MEMBER_NAMES[(idx * 3 + mIdx) % SAMPLE_MEMBER_NAMES.length]} ${surname}`,
+      cpf: buildMemberCpf(idx + 1, mIdx + 1),
+      relationship: rel,
+      birthDate: `${birthYear}-0${(mIdx % 8) + 1}-1${mIdx % 9}`,
+    };
+  });
+
+  const nearestUbs = [...MARICA_REAL_USFS].sort(
+    (x, y) => calculateDistanceMeters(b.coords, x.coords) - calculateDistanceMeters(b.coords, y.coords)
+  )[0];
+  const districtCras =
+    MARICA_CRAS_UNITS.find((c) => c.districtId === b.districtId) ?? MARICA_CRAS_UNITS[0];
+  const districtSchool =
+    MARICA_MUNICIPAL_SCHOOLS.find((s) => s.districtId === b.districtId) ??
+    MARICA_MUNICIPAL_SCHOOLS[0];
+
+  const hasPassaporte = b.socialPrograms.some((p) => p.name === 'Passaporte Universitário');
+  const hasPublicSchool = b.dependentsCount > 0 || b.education === 'Médio incompleto';
+  const hasCadUnico = b.socialPrograms.length > 0;
+
+  const declaredPolicies = Array.from(
+    new Set([
+      ...b.socialPrograms.map((p) => p.name),
+      'Tarifa Zero (Vermelhinhos — Ônibus)',
+      ...(idx % 2 === 0 ? ['Vermelhinhas (Bicicletas Compartilhadas)'] : []),
+      ...(hasPublicSchool ? ['Mumbuca Futuro (Poupança Jovem)'] : []),
+    ])
+  );
+
+  const crossCheckStatus: CrossCheckStatus = b.pendingValidation
+    ? 'AGUARDANDO_CRUZAMENTO'
+    : idx % 7 === 4
+      ? 'DIVERGENCIA'
+      : 'CONFIRMADO';
+
+  const crossCheckNotes =
+    crossCheckStatus === 'CONFIRMADO'
+      ? 'Autodeclaração confirmada no cruzamento com CadÚnico, e-SUS, e-Cidade e Passaporte Universitário.'
+      : crossCheckStatus === 'DIVERGENCIA'
+        ? 'Divergência identificada: vínculo escolar ou endereço no e-SUS precisa de confirmação simples na próxima atualização.'
+        : 'Autodeclaração recebida; fila agendada para cruzamento automático com bases oficiais municipais e federais.';
+
+  return {
+    ...b,
+    householdMembers,
+    selfDeclaration: {
+      cadUnicoRegistered: hasCadUnico,
+      nis: hasCadUnico ? `16${String(104200000 + idx * 38197).slice(0, 9)}` : undefined,
+      ubsRegistered: true,
+      ubsName: nearestUbs ? expandUsfName(nearestUbs.name) : undefined,
+      crasRegistered: hasCadUnico,
+      crasName: hasCadUnico ? districtCras.name : undefined,
+      publicSchoolStudent: hasPublicSchool,
+      schoolName: hasPublicSchool ? districtSchool.name : undefined,
+      studentScope: hasPublicSchool ? 'Dependente(s)' : undefined,
+      passaporteUniversitario: hasPassaporte,
+      universityName: hasPassaporte
+        ? PASSAPORTE_UNIVERSITIES[idx % 4]
+        : undefined,
+      universityCourse: hasPassaporte
+        ? PASSAPORTE_COURSES[(idx * 3) % 10]
+        : undefined,
+      declaredPolicies,
+      crossCheckStatus,
+      crossCheckNotes,
+    },
+  };
+}
+
+export const SEED_BENEFICIARIES: BeneficiaryRecord[] = RAW_SEED_BENEFICIARIES.map(
+  enrichBeneficiaryRecord
+);
 
 export const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
   {

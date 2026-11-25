@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useIntegra } from '../context/IntegraContext';
-import { DISTRICT_BY_ID } from '../data/maricaGeo';
+import { DISTRICT_BY_ID, MARICA_SCHOOL_POINTS } from '../data/maricaGeo';
 import {
   calculateAge,
   computeSocioeconomicSummary,
@@ -76,8 +76,15 @@ export function TerritoryMapView() {
   const hasFilters = JSON.stringify(filters) !== JSON.stringify(DEFAULT_FILTER_STATE);
 
   return (
-    <div className="anim-step grid grid-cols-1 pb-20 lg:grid-cols-[1fr_440px] lg:pb-0">
-      {/* Left Interactive Satellite / Choropleth / Heatmap Atlas */}
+    <div className="anim-step pb-20 lg:pb-0">
+      <div className="flex min-h-[74px] flex-wrap items-center justify-between gap-2 border-b border-[#DCE3E8] bg-[#FBFCF7] px-4 py-3 sm:px-6">
+        <div>
+          <h1 className="font-display text-2xl font-extrabold text-[#0B3B49]">Mapa territorial</h1>
+          <p className="text-sm text-[#52646D]">Compare indicadores por bairro e veja onde estão os serviços públicos.</p>
+        </div>
+        <p className="text-xs font-bold text-[#235B50]">Base social demonstrativa · {MARICA_SCHOOL_POINTS.length} unidades de ensino mapeadas</p>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_390px] xl:grid-cols-[minmax(0,1fr)_420px]">
       <div className="relative">
         <MaricaMap
           beneficiaries={filteredBeneficiaries}
@@ -118,9 +125,10 @@ export function TerritoryMapView() {
       </div>
 
       {/* Right Territorial Intelligence & Combined Filters Drawer */}
-      <aside className="flex flex-col border-t-[3px] border-[#E89B0C] bg-white lg:h-[calc(100dvh-62px)] lg:border-l-[3px] lg:border-t-0">
+      <aside className="flex flex-col border-t-[3px] border-[#E89B0C] bg-white lg:h-[max(540px,calc(100dvh-139px))] lg:border-l-[3px] lg:border-t-0">
         {/* Search + Combined Quick Filters */}
         <div className="border-b border-[#DCE3E8] bg-[#F4F6F8] px-4 py-3.5">
+          <h2 className="font-display mb-2 text-base font-extrabold text-[#0B3B49]">Filtros dos cadastros</h2>
           <div className="relative">
             <Search
               aria-hidden="true"
@@ -561,6 +569,7 @@ export function TerritoryMapView() {
           )}
         </div>
       </aside>
+      </div>
     </div>
   );
 }

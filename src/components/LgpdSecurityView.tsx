@@ -15,23 +15,23 @@ export function LgpdSecurityView() {
   const governancePillars = [
     {
       icon: Lock,
-      title: 'Criptografia e proteção de dados',
-      body: 'Dados em trânsito protegidos por TLS 1.3 e base cadastral com criptografia em repouso (AES-256), separando identificadores pessoais das tabelas analíticas.',
+      title: 'Proteção de dados prevista',
+      body: 'A arquitetura proposta prevê criptografia da base e separação entre identificadores pessoais e tabelas de análise.',
     },
     {
       icon: KeyRound,
       title: 'Controle de permissões (RBAC)',
-      body: 'Acesso por login segmentado: gestores visualizam mapas agregados e indicadores; dados nominais e pontos residenciais exatos exigem autorização específica.',
+      body: 'Os perfis simulam a diferença entre acesso a indicadores por bairro e acesso a registros individuais.',
     },
     {
       icon: Fingerprint,
       title: 'Avaliação específica da biometria facial',
-      body: 'Reconhecida como dado pessoal sensível (Art. 5º, II e Art. 11 da LGPD): aplicação avaliada sob necessidade e proporcionalidade, com consentimento e alternativa presencial obrigatória.',
+      body: 'O protótipo apresenta o fluxo de câmera e a opção de validação presencial. O uso em produção depende de avaliação específica sobre o tratamento de dados biométricos.',
     },
     {
       icon: Database,
       title: 'Base legal e retenção de dados',
-      body: 'Tratamento fundamentado no Art. 7º, III e Art. 23 da LGPD (execução de políticas públicas), com política de retenção, anonimização estatística e histórico preservado.',
+      body: 'A operação com dados reais depende de definir a base legal, os prazos de retenção e os controles de acesso.',
     },
   ];
 
@@ -39,12 +39,12 @@ export function LgpdSecurityView() {
     {
       name: 'CadÚnico / MDS',
       scope: 'Integração futura para conferência de núcleo familiar e benefícios federais',
-      status: 'Pronto para conector (depende de convênio)',
+      status: 'Integração proposta',
     },
     {
       name: 'CAGED / eSocial',
       scope: 'Conferência opcional de vínculos formais CLT e movimentação de emprego',
-      status: 'Módulo desacoplado (viabilidade jurídica)',
+      status: 'Integração proposta',
     },
     {
       name: 'e-SUS e Rede Municipal de Saúde',
@@ -54,7 +54,7 @@ export function LgpdSecurityView() {
     {
       name: 'Sistemas Municipais e Geoprocessamento',
       scope: 'Base cartográfica oficial de 50 bairros e 5 distritos de Maricá (IBGE 2022)',
-      status: 'Integrado em produção',
+      status: 'Camada territorial ativa',
     },
   ];
 
@@ -111,8 +111,7 @@ export function LgpdSecurityView() {
                 Coleta em campo com conectividade limitada (fila offline)
               </h2>
               <p className="mt-0.5 text-xs text-[#52646D]">
-                Equipes de campo podem cadastrar e atualizar beneficiários sem internet; os dados
-                ficam encriptados localmente e sincronizam quando o sinal retorna.
+                A fila simula a coleta em campo. Os registros fictícios podem ser aplicados à base deste navegador.
               </p>
             </div>
           </div>

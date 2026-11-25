@@ -1,5 +1,6 @@
 import type { FeatureCollection, Geometry } from 'geojson';
 import bairrosJson from './maricaBairros.json';
+import escolasJson from './maricaEscolas.json';
 import usfsJson from './maricaUsfs.json';
 import vermelhinhasJson from './maricaVermelhinhas.json';
 import type { DistrictId, DistrictInfo, PublicFacility } from '../types/integra';
@@ -34,6 +35,13 @@ export interface VermelhinhaStation {
   activatedAt: string;
   isKids: boolean;
 }
+
+// Pontos da rede municipal fornecidos no arquivo Escolas_munic_cad.kmz.
+export const MARICA_SCHOOL_POINTS = escolasJson as {
+  id: string;
+  name: string;
+  coords: [number, number];
+}[];
 
 export const MARICA_REAL_USFS: RealUsf[] = usfsJson as RealUsf[];
 export const MARICA_VERMELHINHAS: VermelhinhaStation[] =

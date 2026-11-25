@@ -1,23 +1,12 @@
-# DESIGN.md — Integra Maricá
+# Identidade visual do ID Maricá
 
-## Brand Identity
-Independent municipal identity created exclusively for **Integra Maricá** (Prefeitura Municipal de Maricá). Zero third-party institutional ties.
-- **Custom Emblem (`IntegraLogo.tsx`)**: A territorial geolocation pin embracing five coastal waves/arcs (Maricá's 5 districts and coastal lagoons), a warm solar center point (citizen care), and a grounded base curve (home territory).
+O símbolo do ID Maricá reúne uma pessoa enquadrada em um cartão e uma linha que remete às lagoas da cidade. O portal usa fundo marfim, verde nas ações principais e azul-petróleo nos títulos e na navegação. A tipografia combina Bricolage Grotesque para títulos e DM Sans para leitura e controles.
 
-## Palette
-- Ground: `#F4F6F8` (coastal light mist) and `#FFFFFF` (clean workspace)
-- Brand Primary (Deep Atlantic Teal): `#0B3B49` (editorial contrast bands, management bar, map anchors)
-- Primary Action (Mumbuca Coral-Red): `#D93829` (primary CTAs, active step emphasis, alerts)
-- Secondary Accent (Restinga Sun Amber): `#E89B0C` (key municipal indicators, progress lines, D-15 notice)
-- Supporting Aqua: `#0E7490` (interactive links, CLT status, GPS highlights)
-- Semantic Forest: `#156F48` (approved proof of life, regular benefit)
-- Semantic Plum: `#7B245A` (LGPD spatial confidentiality shield)
+- Azul-petróleo `#0B3B49` para a marca e a gestão
+- Verde `#14604F` para ações principais do cidadão
+- Marfim `#F7F7EE` e verde-claro `#E9F3EC` para os fundos do portal
+- Violeta `#4C3C86` para os marcadores da rede municipal de ensino
 
-## Typography
-- Display / Headings: `Bricolage Grotesque` (600, 700, 800)
-- Body / Controls: `DM Sans` (400, 500, 600, 700)
-- Code / JSON Webhook Payload only: `JetBrains Mono`
+O símbolo do produto está em `public/favicon.svg`. A proposta independente de marca para o IDR Maricá está em `public/brand/idr-marica-proposta.svg`.
 
-## Motion & Craft
-- Easing: `cubic-bezier(0.22, 1, 0.36, 1)` (crisp ease-out, zero bounce).
-- Choreographed hero entrance, smooth step transitions inside the Proof of Life studio, animated SVG checkmark on receipt, IntersectionObserver reveals on narrative bands, and full `prefers-reduced-motion` support.
+As marcas de referência no rodapé vêm dos [canais da Prefeitura](https://www.marica.rj.gov.br/), do [Banco Mumbuca](https://www.bancomumbuca.com.br/) e do [gov.br](https://www.gov.br/governodigital/pt-br/acessibilidade-e-usuario/atendimento-gov.br/imagens/gov-br_logo-svg.png/view). Os marcadores de saúde e bicicleta foram fornecidos junto com o KMZ.

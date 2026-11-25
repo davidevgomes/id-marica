@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { ROLE_PROFILES, useIntegra } from '../context/IntegraContext';
 import type { ManagementView, UserRole } from '../types/integra';
-import { IntegraLogo } from './IntegraLogo';
+import { IdMaricaLogo } from './IdMaricaLogo';
 
 interface HeaderProps {
   onOpenQr: () => void;
@@ -72,11 +72,11 @@ export function Header({ onOpenQr }: HeaderProps) {
               <ArrowLeft className="h-3.5 w-3.5" />
               <span className="hidden xl:inline">Portal</span>
             </button>
-            <IntegraLogo
+            <IdMaricaLogo
               variant="light"
               size="sm"
               showSubtitle
-              subtitle="Gestão e Inteligência"
+              subtitle="Painel de gestão"
             />
           </div>
 
@@ -92,6 +92,7 @@ export function Header({ onOpenQr }: HeaderProps) {
                 <button
                   type="button"
                   key={item.id}
+                  aria-current={isActive ? 'page' : undefined}
                   onClick={() => setManagementView(item.id)}
                   className={`flex items-center gap-1.5 whitespace-nowrap rounded-[6px] px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer xl:text-[13px] ${
                     isActive
@@ -181,6 +182,7 @@ export function Header({ onOpenQr }: HeaderProps) {
               <button
                 type="button"
                 key={item.id}
+                aria-current={isActive ? 'page' : undefined}
                 onClick={() => setManagementView(item.id)}
                 className={`relative flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-[6px] py-1 text-[10px] font-bold transition-colors ${
                   isActive ? 'bg-[#0B3B49] text-white' : 'text-[#52646D] hover:bg-[#F4F6F8]'

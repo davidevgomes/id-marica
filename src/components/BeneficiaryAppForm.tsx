@@ -199,13 +199,14 @@ function recordToDraft(b: BeneficiaryRecord): BeneficiaryDraft {
 export function BeneficiaryAppForm() {
   const { beneficiaries, offlineQueue, syncOfflineQueue, upsertBeneficiary } = useIntegra();
 
+  const [entryMode, setEntryMode] = useState<'new' | 'update' | null>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const lookupRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<FormStep>(1);
-  const [lookupInput, setLookupInput] = useState(beneficiaries[0]?.cpf ?? '');
+  const [lookupInput, setLookupInput] = useState('');
   const [lookupFeedback, setLookupFeedback] = useState<string | null>(null);
-  const [loadedRecord, setLoadedRecord] = useState<BeneficiaryRecord | null>(beneficiaries[0] ?? null);
-  const [draft, setDraft] = useState<BeneficiaryDraft>(() =>
-    beneficiaries[0] ? recordToDraft(beneficiaries[0]) : createEmptyDraft()
-  );
+  const [loadedRecord, setLoadedRecord] = useState<BeneficiaryRecord | null>(null);
+  const [draft, setDraft] = useState<BeneficiaryDraft>(createEmptyDraft);
   const [offlineFieldMode, setOfflineFieldMode] = useState(false);
   const [updateNote, setUpdateNote] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
@@ -268,36 +269,47 @@ export function BeneficiaryAppForm() {
     setLoadedRecord(null);
     setDraft(createEmptyDraft());
     setLookupInput('');
-    setLookupFeedback('Novo cadastro individual iniciado no ID Maricá.');
+    setLookupFeedback(null);
     setFormError(null);
+    setUpdateNote('');
     setAiSuggestions(null);
     setGpsCapturedCoords(null);
     setGpsAccuracy(null);
     setGpsNotice(null);
+    setGpsModeText('');
     setCapturedPhoto(null);
+    setReceipt(null);
     setStep(1);
+  };
+
+  const openRegistration = (mode: 'new' | 'update') => {
+    if (mode !== entryMode || step === 5) {
+      startNewRegistration();
+      setEntryMode(mode);
+    }
+    requestAnimationFrame(() => {
+      const target = mode === 'update' ? lookupRef.current ?? workspaceRef.current : workspaceRef.current;
+      target?.focus({ preventScroll: true });
+      target?.scrollIntoView({ block: 'start' });
+    });
   };
 
   const handleLookup = (e: React.FormEvent) => {
     e.preventDefault();
     const digits = lookupInput.replace(/\D/g, '');
-    const text = lookupInput.trim().toLowerCase();
-    if (digits.length < 3 && text.length < 3) {
-      setLookupFeedback('Informe CPF (titular ou morador) ou nome para localizar.');
+    if (digits.length !== 11) {
+      setLookupFeedback('Digite os 11 números do CPF.');
       return;
     }
     const found = beneficiaries.find(
-      (b) =>
-        (digits.length >= 3 && b.cpf.replace(/\D/g, '').includes(digits)) ||
-        (digits.length >= 3 &&
-          (b.householdMembers ?? []).some((m) => m.cpf.replace(/\D/g, '').includes(digits))) ||
-        b.fullName.toLowerCase().includes(text)
+      (b) => b.cpf.replace(/\D/g, '') === digits ||
+        (b.householdMembers ?? []).some((m) => m.cpf.replace(/\D/g, '') === digits)
     );
     if (found) {
       loadBeneficiary(found);
-      setLookupFeedback(`Cadastro localizado: ${found.fullName}. Atualize sem perder o histórico.`);
+      setLookupFeedback(`Cadastro localizado. Confira os dados de ${found.fullName} e atualize o que mudou.`);
     } else {
-      setLookupFeedback('CPF não localizado. Clique em "Novo cadastro" para iniciar.');
+      setLookupFeedback('CPF não localizado. Confira o número ou escolha Primeiro cadastro.');
     }
   };
 
@@ -652,22 +664,46 @@ export function BeneficiaryAppForm() {
 
   const currentStatus = loadedRecord ? getRegistrationStatus(loadedRecord) : null;
 
-  return (
-    <div className="mx-auto max-w-[1320px] px-4 py-14 sm:px-6 md:py-20">
-      {/* Section Header */}
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
-        <div className="max-w-2xl">
-          <div className="h-[4px] w-14 bg-[#D93829]" />
-          <h2 className="font-display mt-4 text-3xl font-extrabold tracking-tight text-[#0B3B49] sm:text-4xl lg:text-[42px] lg:leading-[1.1]">
-            Faça seu cadastro e atualização no ID Maricá
-          </h2>
-          <p className="mt-3 text-base leading-relaxed text-[#52646D] sm:text-lg">
-            Vincule cada morador da casa pelo CPF, autodeclare as políticas públicas que você
-            acessa e atualize a cada 3 meses preservando todo o histórico.
-          </p>
-        </div>
+  const canEdit = entryMode === 'new' || Boolean(loadedRecord);
 
-        <div className="flex flex-wrap items-center gap-3">
+  return (
+    <div className="mx-auto max-w-[1240px] px-4 py-10 sm:px-6 sm:py-13">
+      <h2 className="citizen-heading font-display font-extrabold text-[#0B3B49]">Como podemos ajudar?</h2>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
+        {([
+          { mode: 'new', icon: UserPlus, label: 'Primeiro cadastro', description: 'Comece se sua família ainda não tem cadastro.' },
+          { mode: 'update', icon: FileText, label: 'Atualizar cadastro', description: 'Encontre seu cadastro pelo CPF.' },
+        ] as const).map(({ mode, icon: Icon, label, description }) => (
+          <button
+            key={mode}
+            type="button"
+            aria-pressed={entryMode === mode}
+            onClick={() => openRegistration(mode)}
+            className="citizen-service-card cursor-pointer text-left"
+          >
+            <span className="citizen-service-icon"><Icon aria-hidden="true" className="size-5" /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-display text-lg font-extrabold">{label}</span>
+              <span className="mt-1 block text-sm text-[#40595A]">{description}</span>
+            </span>
+            <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
+          </button>
+        ))}
+        <a href="#apoio" className="citizen-service-card">
+          <span className="citizen-service-icon"><Home aria-hidden="true" className="size-5" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-display text-lg font-extrabold">Atendimento presencial</span>
+            <span className="mt-1 block text-sm text-[#40595A]">Encontre um CRAS e outros serviços no mapa.</span>
+          </span>
+          <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
+        </a>
+      </div>
+
+      <div ref={workspaceRef} tabIndex={-1} hidden={!entryMode} className="mt-6 scroll-mt-5 rounded-xl">
+        <p className="mb-4 text-sm font-semibold text-[#40595A]">Use dados fictícios para testar. O cadastro fica salvo neste navegador.</p>
+        {canEdit && (
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={() => setOfflineFieldMode((v) => !v)}
@@ -709,13 +745,12 @@ export function BeneficiaryAppForm() {
             </div>
           )}
         </div>
-      </div>
+        )}
 
       {/* Main Studio Card */}
       <div className="overflow-hidden rounded-[14px] border border-[#DCE3E8] bg-white shadow-[0_18px_46px_-16px_rgba(11,59,73,0.14)]">
-        <div className="grid grid-cols-1 lg:grid-cols-[290px_1fr]">
-          {/* Left Module Rail */}
-          <aside className="flex flex-col justify-between border-b border-[#DCE3E8] bg-[#0B3B49] p-5 text-white lg:border-b-0 lg:border-r lg:p-7">
+        <div className={canEdit ? 'grid grid-cols-1 lg:grid-cols-[260px_1fr]' : ''}>
+          {canEdit && <aside className="flex flex-col justify-between border-b border-[#DCE3E8] bg-[#0B3B49] p-5 text-white lg:border-b-0 lg:border-r lg:p-7">
             <div>
               <div className="text-sm font-bold text-[#E89B0C]">Etapas do ID Maricá</div>
               <ol className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-1 lg:space-y-4 lg:gap-0">
@@ -767,17 +802,17 @@ export function BeneficiaryAppForm() {
                 </p>
               </div>
               <p>
-                Sua autodeclaração será cruzada depois com CadÚnico, e-SUS, CRAS, Rede Escolar e
-                Passaporte Universitário.
+                Nesta demonstração, o preenchimento é feito com dados de exemplo.
               </p>
             </div>
-          </aside>
+          </aside>}
 
           {/* Right Workspace */}
           <div className="p-5 sm:p-8">
             {/* CPF Lookup Toolbar */}
-            {step === 1 && (
-              <div className="mb-6 rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-4 sm:p-5">
+            {step === 1 && entryMode === 'update' && (
+              <div className="rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-4 sm:p-5">
+                <label htmlFor="buscar-cpf" className="mb-2 block font-display text-lg font-bold text-[#0B3B49]">Qual é o CPF cadastrado?</label>
                 <form onSubmit={handleLookup} className="flex flex-col gap-2.5 sm:flex-row">
                   <div className="relative flex-1">
                     <Search
@@ -785,11 +820,13 @@ export function BeneficiaryAppForm() {
                       className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#52646D]"
                     />
                     <input
+                      id="buscar-cpf"
+                      ref={lookupRef}
                       type="text"
+                      inputMode="numeric"
                       value={lookupInput}
                       onChange={(e) => setLookupInput(formatCpfInput(e.target.value))}
-                      placeholder="Buscar por CPF (titular ou morador) ou nome..."
-                      aria-label="Buscar cadastro por CPF ou nome"
+                      placeholder="000.000.000-00"
                       className="min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white py-2.5 pl-10 pr-4 text-sm font-semibold text-[#0B3B49]"
                     />
                   </div>
@@ -797,15 +834,7 @@ export function BeneficiaryAppForm() {
                     type="submit"
                     className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[8px] bg-[#0B3B49] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#072933] cursor-pointer"
                   >
-                    Localizar CPF
-                  </button>
-                  <button
-                    type="button"
-                    onClick={startNewRegistration}
-                    className="inline-flex min-h-[46px] items-center justify-center gap-1.5 rounded-[8px] border border-[#0B3B49] bg-white px-4 py-2.5 text-sm font-bold text-[#0B3B49] hover:bg-[#EDF4F6] cursor-pointer"
-                  >
-                    <UserPlus className="h-4 w-4" />
-                    Novo cadastro
+                    Buscar cadastro
                   </button>
                 </form>
 
@@ -849,7 +878,7 @@ export function BeneficiaryAppForm() {
                 </div>
 
                 {lookupFeedback && (
-                  <p className="mt-2 text-xs font-bold text-[#0E7490]">{lookupFeedback}</p>
+                  <p role="status" className="mt-2 text-sm font-bold text-[#0E7490]">{lookupFeedback}</p>
                 )}
               </div>
             )}
@@ -865,7 +894,7 @@ export function BeneficiaryAppForm() {
             )}
 
             {/* MODULE 1: PERSONAL DATA + CPF-LINKED HOUSEHOLD MEMBERS */}
-            {step === 1 && (
+            {step === 1 && canEdit && (
               <div key="mod-1" className="anim-step space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="font-display text-xl font-extrabold text-[#0B3B49]">
@@ -2109,7 +2138,7 @@ export function BeneficiaryAppForm() {
                   Protocolo <strong className="text-[#0B3B49]">{receipt.savedId}</strong> com{' '}
                   <strong>{totalPeopleInHome} CPF(s) vinculados</strong> no domicílio e{' '}
                   <strong>{draft.selfDeclaration.declaredPolicies.length} política(s)</strong>{' '}
-                  autodeclarada(s) para cruzamento com as bases oficiais.
+                  informada(s) na demonstração.
                 </p>
 
                 <div className="mt-6 grid w-full max-w-xl grid-cols-1 gap-3 rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-5 text-left sm:grid-cols-3">
@@ -2140,12 +2169,12 @@ export function BeneficiaryAppForm() {
                       onClick={syncOfflineQueue}
                       className="inline-flex min-h-[46px] items-center gap-2 rounded-[8px] bg-[#156F48] px-5 py-2.5 text-sm font-extrabold text-white hover:bg-[#115B3B] cursor-pointer"
                     >
-                      Sincronizar agora com a base central
+                      Salvar fila neste navegador
                     </button>
                   )}
                   <button
                     type="button"
-                    onClick={() => setStep(1)}
+                    onClick={() => openRegistration('update')}
                     className="inline-flex min-h-[46px] items-center gap-2 rounded-[8px] border border-[#0B3B49] bg-white px-5 py-2.5 text-sm font-bold text-[#0B3B49] hover:bg-[#EDF4F6] cursor-pointer"
                   >
                     Fazer nova consulta ou atualização
@@ -2155,6 +2184,7 @@ export function BeneficiaryAppForm() {
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

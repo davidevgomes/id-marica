@@ -1,4 +1,4 @@
-name: Deploy Integra Maricá to GitHub Pages
+name: Deploy ID Maricá to GitHub Pages
 
 on:
   push:

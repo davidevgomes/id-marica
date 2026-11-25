@@ -1,5 +1,5 @@
 /**
- * Bespoke multi-tone civic SVG graphics crafted specifically for Integra Maricá.
+ * Bespoke multi-tone civic SVG graphics crafted specifically for ID Maricá.
  */
 
 export function BiometricFrameGraphic({ scanning = false }: { scanning?: boolean }) {

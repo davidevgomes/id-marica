@@ -11,7 +11,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MARICA_CRAS_UNITS, MARICA_MUNICIPAL_SCHOOLS } from '../data/maricaCatalog';
+import { MARICA_CRAS_UNITS } from '../data/maricaCatalog';
 import {
   calculateDistanceMeters,
   expandUsfName,
@@ -20,6 +20,7 @@ import {
   MARICA_CENTER,
   MARICA_DISTRICTS,
   MARICA_REAL_USFS,
+  MARICA_SCHOOL_POINTS,
   MARICA_VERMELHINHAS,
 } from '../data/maricaGeo';
 
@@ -57,13 +58,13 @@ const ALL_EQUIPMENTS: EquipmentPoint[] = [
     extraInfo: `Tel.: ${c.phone} (CadÚnico e assistência)`,
     coords: c.coords,
   })),
-  ...MARICA_MUNICIPAL_SCHOOLS.map((s) => ({
+  ...MARICA_SCHOOL_POINTS.map((s) => ({
     id: s.id,
     category: 'ESCOLA' as const,
-    categoryLabel: 'Escola Pública',
+    categoryLabel: 'Rede municipal de ensino',
     name: s.name,
-    address: `Bairro ${s.neighborhood} — Rede Municipal de Ensino`,
-    extraInfo: 'Ensino Público Municipal',
+    address: 'Rede municipal de ensino de Maricá',
+    extraInfo: 'Localização no mapa',
     coords: s.coords,
   })),
   ...MARICA_VERMELHINHAS.map((v) => ({
@@ -307,7 +308,7 @@ export function NearbyUsfMap() {
     { id: 'ALL', label: 'Todos', count: ALL_EQUIPMENTS.length, icon: MapPin },
     { id: 'SAUDE', label: 'Unidades de Saúde', count: MARICA_REAL_USFS.length, icon: HeartPulse },
     { id: 'CRAS', label: 'CRAS', count: MARICA_CRAS_UNITS.length, icon: Users },
-    { id: 'ESCOLA', label: 'Escolas', count: MARICA_MUNICIPAL_SCHOOLS.length, icon: GraduationCap },
+    { id: 'ESCOLA', label: 'Escolas', count: MARICA_SCHOOL_POINTS.length, icon: GraduationCap },
     { id: 'VERMELHINHA', label: 'Vermelhinhas', count: MARICA_VERMELHINHAS.length, icon: Bike },
   ];
 

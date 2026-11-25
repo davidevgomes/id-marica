@@ -1,6 +1,6 @@
 import L from 'leaflet';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Layers, Lock, Map as MapIcon, RotateCcw, Satellite, X } from 'lucide-react';
+import { GraduationCap, Layers, Lock, Map as MapIcon, Navigation, RotateCcw, Satellite, X } from 'lucide-react';
 import { MARICA_CRAS_UNITS } from '../data/maricaCatalog';
 import {
   DISTRICT_BY_ID,
@@ -10,6 +10,7 @@ import {
   MARICA_DEFAULT_ZOOM,
   MARICA_DISTRICTS,
   MARICA_REAL_USFS,
+  MARICA_SCHOOL_POINTS,
   MARICA_VERMELHINHAS,
 } from '../data/maricaGeo';
 import {
@@ -29,6 +30,33 @@ import {
   LayerSchoolIcon,
   LayerTriangulationIcon,
 } from './CivicIcons';
+
+const schoolLocations = new Map<string, typeof MARICA_SCHOOL_POINTS>();
+for (const school of MARICA_SCHOOL_POINTS) {
+  const key = school.coords.join(',');
+  const schools = schoolLocations.get(key);
+  if (schools) schools.push(school);
+  else schoolLocations.set(key, [school]);
+}
+const schoolIcon = L.divIcon({
+  className: 'school-map-marker',
+  html: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m2 10 10-5 10 5-10 5-10-5Zm4 2v5c3 3 9 3 12 0v-5m4-2v6"/></svg>',
+  iconSize: [29, 29],
+  iconAnchor: [15, 15],
+  popupAnchor: [0, -16],
+});
+const healthIcon = L.icon({
+  iconUrl: `${import.meta.env.BASE_URL}map/saude.webp`,
+  iconSize: [27, 33],
+  iconAnchor: [13, 32],
+  popupAnchor: [0, -29],
+});
+const bikeIcon = L.icon({
+  iconUrl: `${import.meta.env.BASE_URL}map/vermelhinhas.webp`,
+  iconSize: [26, 32],
+  iconAnchor: [13, 31],
+  popupAnchor: [0, -28],
+});
 
 export type ChoroplethMetric = 'CONCENTRACAO' | 'PER_CAPITA' | 'DESEMPREGO' | 'FORMALIZACAO';
 
@@ -80,19 +108,21 @@ export function MaricaMap({
   const anchorsLayerRef = useRef<L.LayerGroup | null>(null);
   const heatLayerRef = useRef<L.LayerGroup | null>(null);
   const commutingLayerRef = useRef<L.LayerGroup | null>(null);
+  const schoolsLayerRef = useRef<L.LayerGroup | null>(null);
   const usfsLayerRef = useRef<L.LayerGroup | null>(null);
   const crasLayerRef = useRef<L.LayerGroup | null>(null);
   const vermelhinhasLayerRef = useRef<L.LayerGroup | null>(null);
   const pointsLayerRef = useRef<L.LayerGroup | null>(null);
   const layersPopoverRef = useRef<HTMLDivElement | null>(null);
 
-  const [basemap, setBasemap] = useState<'osm' | 'satellite'>('satellite');
+  const [basemap, setBasemap] = useState<'osm' | 'satellite'>('osm');
   const [layersOpen, setLayersOpen] = useState(false);
   const [showBairros, setShowBairros] = useState(true);
   const [choroplethMetric, setChoroplethMetric] = useState<ChoroplethMetric>('CONCENTRACAO');
-  const [showHeatmap, setShowHeatmap] = useState(true);
+  const [showHeatmap, setShowHeatmap] = useState(false);
   const [showIndividualPoints, setShowIndividualPoints] = useState(canViewIndividualPoints);
   const [showCommuting, setShowCommuting] = useState(false);
+  const [showSchools, setShowSchools] = useState(false);
   const [showUsfs, setShowUsfs] = useState(false);
   const [showCras, setShowCras] = useState(false);
   const [showVermelhinhas, setShowVermelhinhas] = useState(false);
@@ -156,6 +186,7 @@ export function MaricaMap({
     bairrosLayerRef.current = L.layerGroup().addTo(map);
     heatLayerRef.current = L.layerGroup().addTo(map);
     commutingLayerRef.current = L.layerGroup().addTo(map);
+    schoolsLayerRef.current = L.layerGroup().addTo(map);
     usfsLayerRef.current = L.layerGroup().addTo(map);
     crasLayerRef.current = L.layerGroup().addTo(map);
     vermelhinhasLayerRef.current = L.layerGroup().addTo(map);
@@ -164,7 +195,7 @@ export function MaricaMap({
 
     const geoBounds = L.geoJSON(MARICA_BAIRROS_GEOJSON).getBounds();
     fullBoundsRef.current = geoBounds;
-    map.fitBounds(geoBounds, { paddingTopLeft: [24, 64], paddingBottomRight: [24, 92] });
+    map.fitBounds(geoBounds, { paddingTopLeft: [24, 108], paddingBottomRight: [24, 92] });
 
     mapRef.current = map;
 
@@ -174,7 +205,7 @@ export function MaricaMap({
     };
   }, []);
 
-  // Switch Basemap (Satellite default / OSM Streets)
+  // Switch between the street and satellite basemaps.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -208,7 +239,7 @@ export function MaricaMap({
     if (selectedDistrict === 'ALL') {
       if (fullBoundsRef.current) {
         map.flyToBounds(fullBoundsRef.current, {
-          paddingTopLeft: [24, 64],
+          paddingTopLeft: [24, 108],
           paddingBottomRight: [24, 92],
           duration: 0.65,
         });
@@ -225,7 +256,7 @@ export function MaricaMap({
     const bounds = L.geoJSON(districtFeatures).getBounds();
     if (bounds.isValid()) {
       map.flyToBounds(bounds, {
-        paddingTopLeft: [28, 64],
+        paddingTopLeft: [28, 108],
         paddingBottomRight: [28, 92],
         duration: 0.65,
       });
@@ -300,7 +331,7 @@ export function MaricaMap({
         );
 
         poly.on('mouseover', () => {
-          (poly as L.Path).setStyle({ weight: 2.5, fillOpacity: 0.56 });
+          (poly as L.Path).setStyle({ weight: 2.5, fillOpacity: 0.42 });
         });
         poly.on('mouseout', () => {
           geoLayer.resetStyle(poly);
@@ -387,13 +418,7 @@ export function MaricaMap({
     if (!showUsfs) return;
 
     MARICA_REAL_USFS.forEach((u) => {
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="width:22px;height:22px;border-radius:5px;background:#D93829;border:2px solid #fff;box-shadow:0 2px 6px rgba(12,27,51,0.34);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;line-height:1;">+</div>`,
-        iconSize: [22, 22],
-        iconAnchor: [11, 11],
-      });
-      L.marker(u.coords, { icon })
+      L.marker(u.coords, { icon: healthIcon, alt: expandUsfName(u.name) })
         .bindPopup(
           `<div style="padding:10px 12px;min-width:210px;">
             <div style="font-size:11px;font-weight:700;color:#D93829;">Rede Municipal de Saúde</div>
@@ -404,6 +429,46 @@ export function MaricaMap({
         .addTo(layer);
     });
   }, [showUsfs]);
+
+  useEffect(() => {
+    const layer = schoolsLayerRef.current;
+    if (!layer) return;
+    layer.clearLayers();
+    if (!showSchools) return;
+
+    for (const schools of schoolLocations.values()) {
+      const location = schools[0].coords;
+      const names = schools.map(({ name }) => name);
+      const popup = document.createElement('div');
+      popup.className = 'school-map-popup';
+      const heading = document.createElement('strong');
+      heading.textContent = 'Rede municipal de ensino';
+      const list = document.createElement('ul');
+      for (const name of names) {
+        const item = document.createElement('li');
+        item.textContent = name;
+        list.append(item);
+      }
+      popup.append(heading, list);
+      L.marker(location, { icon: schoolIcon, title: names.join(' / '), alt: names.join(' / '), zIndexOffset: 100 })
+        .bindPopup(popup)
+        .addTo(layer);
+    }
+  }, [showSchools]);
+
+  const locateSchool = (id: string) => {
+    const school = MARICA_SCHOOL_POINTS.find((point) => point.id === id);
+    const map = mapRef.current;
+    if (!school || !map) return;
+    const marker = schoolsLayerRef.current?.getLayers().find(
+      (point): point is L.Marker => point instanceof L.Marker && point.getLatLng().equals(school.coords)
+    );
+    if (!marker) return;
+    setLayersOpen(false);
+    map.setView(school.coords, 16);
+    marker.openPopup();
+    marker.getElement()?.focus({ preventScroll: true });
+  };
 
   // 7 Real Maricá CRAS Units
   useEffect(() => {
@@ -440,16 +505,7 @@ export function MaricaMap({
     if (!showVermelhinhas) return;
 
     MARICA_VERMELHINHAS.forEach((v) => {
-      const bg = v.isKids ? '#E89B0C' : '#D93829';
-      const border = v.isKids ? '#0B3B49' : '#FFFFFF';
-      const text = v.isKids ? '#072933' : '#FFFFFF';
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="width:20px;height:20px;border-radius:999px;background:${bg};border:2px solid ${border};box-shadow:0 2px 6px rgba(11,59,73,0.36);display:flex;align-items:center;justify-content:center;color:${text};font-weight:900;font-size:9px;">${v.isKids ? 'I' : 'V'}</div>`,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10],
-      });
-      L.marker(v.coords, { icon })
+      L.marker(v.coords, { icon: bikeIcon, alt: v.name })
         .bindPopup(
           `<div style="padding:10px 12px;min-width:220px;">
             <div style="font-size:11px;font-weight:700;color:${v.isKids ? '#8A5600' : '#D93829'};">${v.isKids ? 'Estação Vermelhinha Infantil' : 'Estação Vermelhinha (Bicicleta Gratuita)'}</div>
@@ -507,7 +563,7 @@ export function MaricaMap({
     onSelectDistrict('ALL');
     if (fullBoundsRef.current) {
       mapRef.current?.flyToBounds(fullBoundsRef.current, {
-        paddingTopLeft: [24, 64],
+        paddingTopLeft: [24, 108],
         paddingBottomRight: [24, 92],
         duration: 0.65,
       });
@@ -519,16 +575,17 @@ export function MaricaMap({
     (showHeatmap ? 1 : 0) +
     (canViewIndividualPoints && showIndividualPoints ? 1 : 0) +
     (showCommuting ? 1 : 0) +
+    (showSchools ? 1 : 0) +
     (showUsfs ? 1 : 0) +
     (showCras ? 1 : 0) +
     (showVermelhinhas ? 1 : 0);
 
   return (
-    <div className="isolate relative h-[480px] w-full bg-[#0E2832] sm:h-[540px] lg:h-[calc(100dvh-62px)]">
+    <div className="isolate relative h-[480px] w-full bg-[#0E2832] sm:h-[540px] lg:h-[max(540px,calc(100dvh-139px))]">
       <div ref={containerRef} className="h-full w-full" />
 
       {/* Top Floating Bar */}
-      <div className="pointer-events-none absolute inset-x-3 top-3 z-[850] flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="pointer-events-none absolute inset-x-3 top-3 z-[850] flex flex-col items-start gap-2">
         {/* Horizontal-scroll 5-district strip */}
         <div className="pointer-events-auto no-scrollbar flex max-w-full flex-nowrap items-center gap-1 overflow-x-auto rounded-[10px] border border-[#DCE3E8] bg-white p-1 shadow-md">
           <button
@@ -590,6 +647,15 @@ export function MaricaMap({
 
           <button
             type="button"
+            aria-pressed={showSchools}
+            onClick={() => setShowSchools((active) => !active)}
+            className={`flex min-h-[38px] cursor-pointer items-center gap-1.5 rounded-[9px] border px-3 py-1.5 text-xs font-bold shadow-md ${showSchools ? 'border-[#4C3C86] bg-[#4C3C86] text-white' : 'border-[#DCE3E8] bg-white text-[#312561] hover:bg-[#F1EDFF]'}`}
+          >
+            <GraduationCap aria-hidden="true" className="size-4" />
+            Escolas
+          </button>
+          <button
+            type="button"
             onClick={() => setLayersOpen((v) => !v)}
             aria-expanded={layersOpen}
             aria-controls="map-layers-popover"
@@ -619,7 +685,7 @@ export function MaricaMap({
               id="map-layers-popover"
               role="region"
               aria-label="Camadas cartográficas do mapa"
-              className="anim-modal absolute left-0 top-11 max-h-[72dvh] w-[min(21rem,calc(100vw-24px))] overflow-y-auto rounded-[12px] border border-[#DCE3E8] bg-white p-3 shadow-2xl sm:left-auto sm:right-0"
+              className="anim-modal absolute left-0 top-11 max-h-[min(19rem,55dvh)] w-[min(21rem,calc(100vw-24px))] overflow-y-auto rounded-[12px] border border-[#DCE3E8] bg-white p-3 shadow-2xl"
             >
               <div className="flex items-center justify-between border-b border-[#EDF1F4] pb-2">
                 <div>
@@ -673,6 +739,20 @@ export function MaricaMap({
                 </div>
               </div>
 
+              {showSchools && (
+                <label className="mt-3 block rounded-lg bg-[#F1EDFF] p-2 text-sm font-bold text-[#312561]">
+                  Localizar escola
+                  <select
+                    value=""
+                    onChange={(event) => locateSchool(event.target.value)}
+                    className="mt-1 block min-h-10 w-full rounded-md border border-[#D9CFF8] bg-white px-2 text-xs"
+                  >
+                    <option value="">Escolha uma das {MARICA_SCHOOL_POINTS.length} unidades</option>
+                    {MARICA_SCHOOL_POINTS.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
+                  </select>
+                </label>
+              )}
+
               <div className="mt-2.5 space-y-1 border-t border-[#EDF1F4] pt-2">
                 {[
                   {
@@ -707,6 +787,14 @@ export function MaricaMap({
                     active: showCommuting,
                     disabled: false,
                     toggle: () => setShowCommuting((v) => !v),
+                    icon: Navigation,
+                  },
+                  {
+                    label: `Escolas municipais (${MARICA_SCHOOL_POINTS.length})`,
+                    desc: 'Escolas, creches e centros municipais',
+                    active: showSchools,
+                    disabled: false,
+                    toggle: () => setShowSchools((v) => !v),
                     icon: LayerSchoolIcon,
                   },
                   {

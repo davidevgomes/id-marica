@@ -102,7 +102,7 @@ interface IntegraContextValue {
 
   authSession: AuthSession | null;
   activeRoleProfile: RoleProfile | null;
-  loginAsRole: (role: UserRole, customEmail?: string) => void;
+  loginAsRole: (role: UserRole) => void;
   switchRole: (role: UserRole) => void;
   logoutManagement: () => void;
 
@@ -237,11 +237,11 @@ export function IntegraProvider({ children }: { children: React.ReactNode }) {
   );
 
   const loginAsRole = useCallback(
-    (role: UserRole, customEmail?: string) => {
+    (role: UserRole) => {
       const prof = ROLE_PROFILES[role];
       const session: AuthSession = {
         userName: prof.userName,
-        userEmail: customEmail?.trim() || prof.userEmail,
+        userEmail: prof.userEmail,
         role,
         department: prof.department,
         loggedInAt: nowLabel(),
@@ -253,14 +253,14 @@ export function IntegraProvider({ children }: { children: React.ReactNode }) {
           timestamp: nowLabel(),
           actorName: session.userName,
           actorRole: role,
-          action: `Autenticação no painel administrativo (${prof.shortLabel})`,
+          action: `Abertura da demonstração (${prof.shortLabel})`,
           resource: 'Controle de acesso RBAC',
           legalBasis: 'Art. 46 da LGPD: rastreabilidade e segurança de acesso',
           severity: 'success',
         },
         ...prev,
       ]);
-      pushToast('Acesso autenticado', `Perfil ativo: ${prof.label}.`, 'success');
+      pushToast('Perfil de demonstração ativo', `Perfil ativo: ${prof.label}.`, 'success');
     },
     [pushToast]
   );

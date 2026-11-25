@@ -11,6 +11,7 @@ import {
   History,
   Home,
   Loader2,
+  MapPin,
   Paperclip,
   Plus,
   ScanFace,
@@ -309,7 +310,7 @@ export function BeneficiaryAppForm() {
       loadBeneficiary(found);
       setLookupFeedback(`Cadastro localizado. Confira os dados de ${found.fullName} e atualize o que mudou.`);
     } else {
-      setLookupFeedback('CPF não localizado. Confira o número ou escolha Primeiro cadastro.');
+      setLookupFeedback('CPF não localizado. Confira o número ou escolha Fazer meu primeiro cadastro.');
     }
   };
 
@@ -667,41 +668,42 @@ export function BeneficiaryAppForm() {
   const canEdit = entryMode === 'new' || Boolean(loadedRecord);
 
   return (
-    <div className="mx-auto max-w-[1240px] px-4 py-10 sm:px-6 sm:py-13">
-      <h2 className="citizen-heading font-display font-extrabold text-[#0B3B49]">Como podemos ajudar?</h2>
-
-      <div className="mt-5 grid gap-3 md:grid-cols-3">
+    <div className="mx-auto max-w-[1240px] px-4 pb-9 sm:px-6 sm:pb-13">
+      <div className="grid gap-2 rounded-2xl border border-[#DCE3E8] bg-white p-2.5 shadow-[0_16px_36px_-22px_rgba(7,41,51,0.42)] md:grid-cols-[1.1fr_1fr_1fr]">
         {([
-          { mode: 'new', icon: UserPlus, label: 'Primeiro cadastro', description: 'Comece se sua família ainda não tem cadastro.' },
-          { mode: 'update', icon: FileText, label: 'Atualizar cadastro', description: 'Encontre seu cadastro pelo CPF.' },
+          { mode: 'update', icon: FileText, label: 'Atualizar meu cadastro', description: 'Use o CPF cadastrado.' },
+          { mode: 'new', icon: UserPlus, label: 'Fazer meu primeiro cadastro', description: 'Cadastre sua família.' },
         ] as const).map(({ mode, icon: Icon, label, description }) => (
           <button
             key={mode}
             type="button"
             aria-pressed={entryMode === mode}
+            aria-controls="cadastro-formulario"
+            aria-labelledby={`cadastro-${mode}-acao`}
+            aria-describedby={`cadastro-${mode}-detalhe`}
             onClick={() => openRegistration(mode)}
-            className="citizen-service-card cursor-pointer text-left"
+            className={`citizen-service-card cursor-pointer text-left ${mode === 'update' ? 'citizen-service-primary' : ''}`}
           >
             <span className="citizen-service-icon"><Icon aria-hidden="true" className="size-5" /></span>
             <span className="min-w-0 flex-1">
-              <span className="block font-display text-lg font-extrabold">{label}</span>
-              <span className="mt-1 block text-sm text-[#40595A]">{description}</span>
+              <span id={`cadastro-${mode}-acao`} className="block font-display text-base leading-tight font-extrabold sm:text-lg">{label}</span>
+              <span id={`cadastro-${mode}-detalhe`} className="citizen-service-detail mt-1 block text-sm leading-snug">{description}</span>
             </span>
             <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
           </button>
         ))}
-        <a href="#apoio" className="citizen-service-card">
-          <span className="citizen-service-icon"><Home aria-hidden="true" className="size-5" /></span>
+        <a href="#apoio" className="citizen-service-card" aria-labelledby="cadastro-ajuda-acao" aria-describedby="cadastro-ajuda-detalhe">
+          <span className="citizen-service-icon citizen-service-icon-help"><MapPin aria-hidden="true" className="size-5" /></span>
           <span className="min-w-0 flex-1">
-            <span className="block font-display text-lg font-extrabold">Atendimento presencial</span>
-            <span className="mt-1 block text-sm text-[#40595A]">Encontre um CRAS e outros serviços no mapa.</span>
+            <span id="cadastro-ajuda-acao" className="block font-display text-base leading-tight font-extrabold sm:text-lg">Encontrar atendimento</span>
+            <span id="cadastro-ajuda-detalhe" className="citizen-service-detail mt-1 block text-sm leading-snug">Veja os locais no mapa.</span>
           </span>
           <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
         </a>
       </div>
 
-      <div ref={workspaceRef} tabIndex={-1} hidden={!entryMode} className="mt-6 scroll-mt-5 rounded-xl">
-        <p className="mb-4 text-sm font-semibold text-[#40595A]">Use dados fictícios para testar. O cadastro fica salvo neste navegador.</p>
+      <div id="cadastro-formulario" ref={workspaceRef} tabIndex={-1} hidden={!entryMode} className="mt-5 scroll-mt-4 rounded-xl">
+        <p className="mb-4 text-sm font-semibold text-[#405661]">Use dados fictícios para testar. O cadastro fica salvo neste navegador.</p>
         {canEdit && (
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <button

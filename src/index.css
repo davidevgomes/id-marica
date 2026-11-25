@@ -341,11 +341,35 @@
 }
 
 /* Portal do cidadão */
+.citizen-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(90deg, #072933 1%, rgb(7 41 51 / 92%) 29%, rgb(7 41 51 / 40%) 59%, rgb(7 41 51 / 8%) 100%);
+}
+
+.citizen-hero-photo {
+  height: 100%;
+  object-position: center 32%;
+}
+
 .citizen-title {
-  font-size: clamp(2.6rem, 5.5vw, 4.85rem);
-  line-height: 0.98;
-  letter-spacing: -0.047em;
-  text-wrap: initial;
+  font-size: clamp(2.65rem, 6.15vw, 5.35rem);
+  line-height: 1;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+@media (width < 40rem) {
+  .citizen-hero::after {
+    background: linear-gradient(180deg, rgb(7 41 51 / 8%) 0%, rgb(7 41 51 / 14%) 4rem, #072933 10rem);
+  }
+
+  .citizen-hero-photo {
+    height: 11rem;
+    object-position: 72% 29%;
+  }
 }
 
 .citizen-heading {
@@ -354,51 +378,78 @@
 }
 
 .citizen-primary {
-  background: #14604f;
-  box-shadow: 0 6px 18px rgb(11 59 73 / 15%);
+  background: #b52b1e;
+  color: white;
 }
 
 .citizen-primary:hover {
-  background: #0b3b49;
-}
-
-.citizen-hero-photo {
-  min-height: clamp(13rem, 33vw, 27rem);
-  box-shadow: 0 17px 35px -23px rgb(11 59 73 / 45%);
+  background: #942217;
 }
 
 .citizen-service-card {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
-  min-height: 6rem;
-  padding: 1rem;
-  border: 1px solid #dbe5da;
-  border-radius: 1rem;
-  background: white;
+  gap: 0.75rem;
+  min-height: 4.25rem;
+  padding: 0.75rem;
+  border: 1px solid #dce3e8;
+  border-radius: 0.75rem;
+  background: #f7fafb;
   color: #0b3b49;
   transition: border-color 150ms, background 150ms;
 }
 
 .citizen-service-card:hover,
 .citizen-service-card[aria-pressed="true"] {
-  border-color: #3f8977;
-  background: #f1f8f0;
+  border-color: #0b3b49;
+  background: #ebf3f6;
 }
 
 .citizen-service-icon {
   display: grid;
   place-items: center;
-  width: 2.7rem;
-  height: 2.7rem;
+  width: 2.625rem;
+  height: 2.625rem;
   flex: none;
-  border-radius: 0.8rem;
-  background: #e2f1e7;
-  color: #195c4c;
+  border-radius: 0.65rem;
+  background: #e1edf2;
+  color: #0b3b49;
 }
 
-.a11y-contrast .citizen-portal :is(h1, h2) span {
-  color: inherit;
+.citizen-service-icon-help {
+  background: #ffedc9;
+  color: #704600;
+}
+
+.citizen-service-detail {
+  color: #405661;
+}
+
+.citizen-service-card.citizen-service-primary {
+  border-color: transparent;
+  background: #b52b1e;
+  color: white;
+}
+
+.citizen-service-card.citizen-service-primary:hover,
+.citizen-service-card.citizen-service-primary[aria-pressed="true"] {
+  background: #942217;
+}
+
+.citizen-service-primary :is(.citizen-service-detail, .citizen-service-icon) {
+  color: white;
+}
+
+.citizen-service-primary .citizen-service-icon {
+  background: rgb(255 255 255 / 16%);
+}
+
+.a11y-contrast .citizen-portal .citizen-hero::after {
+  background: #000;
+}
+
+.a11y-contrast .citizen-portal .citizen-title span {
+  color: white;
 }
 
 .a11y-contrast .citizen-portal :is(.citizen-service-card, details, header nav a) {
@@ -407,7 +458,7 @@
   border-color: black;
 }
 
-.a11y-contrast .citizen-portal .citizen-primary {
+.a11y-contrast .citizen-portal .citizen-service-primary {
   background: black;
   color: white;
 }

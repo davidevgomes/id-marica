@@ -14,3 +14,7 @@ npm run build
 ```
 
 O protótipo usa perfis simulados e armazena os cadastros no navegador. Use exemplos e dados fictícios. Os pontos da rede de ensino vêm de `Escolas_munic_cad.kmz` e estão em `src/data/maricaEscolas.json`.
+
+## Instalar no celular
+
+Abra o portal pelo navegador e acesse **Menu → Instalar no celular**. Depois do primeiro acesso com internet, a página básica também abre offline. O mapa de fundo depende da conexão. Para testar a instalação localmente, execute `npm run build` e depois `npm run preview`.

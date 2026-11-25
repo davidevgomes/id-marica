@@ -124,7 +124,7 @@ export function CitizenPortalLanding() {
       </header>
 
       <main>
-        <section aria-labelledby="portal-title" className="citizen-hero relative isolate flex items-center overflow-hidden border-t border-white/10 bg-[#072933] text-white">
+        <section aria-labelledby="portal-title" className="citizen-hero relative isolate overflow-hidden bg-[#072933] text-white">
           <img
             src={`${import.meta.env.BASE_URL}hero-marica.jpg`}
             alt=""
@@ -133,17 +133,16 @@ export function CitizenPortalLanding() {
             fetchPriority="high"
             className="citizen-hero-photo absolute inset-0 -z-20 w-full object-cover"
           />
-          <div className="mx-auto w-full max-w-[1240px] px-4 pt-10 pb-16 sm:px-6 sm:pt-16 sm:pb-24">
-            <div className="anim-hero-2">
-              <p className="mb-4 inline-flex items-center gap-2.5 text-sm font-bold text-[#FFBE49] sm:mb-5">
-                <span aria-hidden="true" className="h-[3px] w-8 shrink-0 bg-[#E89B0C]" />
+          <div className="mx-auto max-w-[1240px] px-4 pt-[8.6rem] pb-11 sm:px-6 sm:pt-18 sm:pb-25 lg:pt-22 lg:pb-29">
+            <div className="anim-hero-2 max-w-[36rem]">
+              <p className="mb-3 inline-flex items-center gap-2.5 text-sm font-bold text-[#FFD17A] sm:mb-5">
+                <span aria-hidden="true" className="h-[3px] w-6 rounded-full bg-[#D93829]" />
                 ID Maricá - identidade cidadã
               </p>
               <h1 id="portal-title" className="citizen-title font-display font-extrabold">
-                <span className="block sm:inline">Seu cadastro</span>{' '}
-                em Maricá <span className="block">sempre em dia</span>
+                Seu cadastro cidadão <span className="text-[#FFD17A]">em dia</span>
               </h1>
-              <p className="mt-5 max-w-[30rem] text-base leading-relaxed text-[#E2EDF0] sm:text-lg">
+              <p className="mt-3 max-w-[26rem] text-base leading-relaxed text-[#E2EDF0] sm:mt-5 sm:text-lg">
                 Faça ou atualize o cadastro da sua família para os benefícios sociais de Maricá.
               </p>
             </div>

@@ -341,45 +341,34 @@
 }
 
 /* Portal do cidadão */
-.citizen-hero {
-  min-height: clamp(25rem, 59svh, 34rem);
-}
-
 .citizen-hero::after {
   content: '';
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(96deg, rgb(7 41 51 / 96%) 0%, rgb(7 41 51 / 87%) 44%, rgb(7 41 51 / 43%) 76%, rgb(7 41 51 / 24%) 100%);
+  background: linear-gradient(90deg, #072933 1%, rgb(7 41 51 / 92%) 29%, rgb(7 41 51 / 40%) 59%, rgb(7 41 51 / 8%) 100%);
 }
 
 .citizen-hero-photo {
   height: 100%;
-  object-position: 72% center;
+  object-position: center 32%;
 }
 
 .citizen-title {
-  font-size: clamp(2.5rem, 5vw, 4.4rem);
-  line-height: 1.04;
-  letter-spacing: -0.04em;
-  text-wrap: initial;
+  font-size: clamp(2.65rem, 6.15vw, 5.35rem);
+  line-height: 1;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
 }
 
 @media (width < 40rem) {
   .citizen-hero::after {
-    background:
-      linear-gradient(180deg, transparent 36%, rgb(7 41 51 / 58%) 74%, rgb(7 41 51 / 35%) 100%),
-      linear-gradient(96deg, rgb(7 41 51 / 96%) 0%, rgb(7 41 51 / 87%) 44%, rgb(7 41 51 / 43%) 76%, rgb(7 41 51 / 24%) 100%);
-  }
-}
-
-@media (width >= 40rem) {
-  .citizen-hero {
-    min-height: clamp(29rem, 64svh, 39rem);
+    background: linear-gradient(180deg, rgb(7 41 51 / 8%) 0%, rgb(7 41 51 / 14%) 4rem, #072933 10rem);
   }
 
   .citizen-hero-photo {
-    object-position: center 32%;
+    height: 11rem;
+    object-position: 72% 29%;
   }
 }
 

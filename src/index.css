@@ -214,16 +214,23 @@
   animation: drawCheck 520ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
 }
 
-/* Smooth accordion expand/collapse without abrupt jump */
 .accordion-panel {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  opacity: 0;
+  visibility: hidden;
+  transition: grid-template-rows 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease, visibility 0s linear 260ms;
 }
+
 .accordion-panel[data-open="true"] {
   grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
 }
+
 .accordion-inner {
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -306,6 +313,7 @@
   .anim-hero-4,
   .anim-hero-photo,
   .anim-step,
+  .citizen-appear,
   .anim-modal,
   .anim-scanline,
   .anim-radar,
@@ -341,6 +349,50 @@
 }
 
 /* Portal do cidadão */
+html:has(.citizen-portal) {
+  scroll-padding-top: 4.75rem;
+}
+
+.citizen-menu {
+  opacity: 0;
+  visibility: hidden;
+  translate: 0 -0.45rem;
+  pointer-events: none;
+  transition: opacity 170ms ease, translate 220ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 220ms;
+}
+
+.citizen-menu[data-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  translate: 0;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+@keyframes citizenAppear {
+  from {
+    opacity: 0;
+    translate: 0 0.4rem;
+  }
+
+  to {
+    opacity: 1;
+    translate: 0;
+  }
+}
+
+.citizen-appear,
+.citizen-portal .anim-step {
+  animation: citizenAppear 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .citizen-menu,
+  .accordion-panel {
+    transition: none !important;
+  }
+}
+
 .citizen-hero::after {
   content: '';
   position: absolute;
@@ -396,7 +448,28 @@
   border-radius: 0.75rem;
   background: #f7fafb;
   color: #0b3b49;
-  transition: border-color 150ms, background 150ms;
+  transition: border-color 160ms, background 160ms, box-shadow 180ms, translate 180ms;
+}
+
+.citizen-service-card > svg:last-child {
+  transition: translate 180ms;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .citizen-service-card:active {
+    translate: 0 1px;
+  }
+
+  @media (hover: hover) {
+    .citizen-service-card:hover {
+      translate: 0 -2px;
+      box-shadow: 0 6px 16px rgb(7 41 51 / 12%);
+    }
+
+    .citizen-service-card:hover > svg:last-child {
+      translate: 3px 0;
+    }
+  }
 }
 
 .citizen-service-card:hover,
@@ -452,7 +525,7 @@
   color: white;
 }
 
-.a11y-contrast .citizen-portal :is(.citizen-service-card, details, header nav a) {
+.a11y-contrast .citizen-portal :is(.citizen-service-card, #duvidas button, header nav a) {
   background: white;
   color: black;
   border-color: black;

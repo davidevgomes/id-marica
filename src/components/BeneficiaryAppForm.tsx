@@ -202,7 +202,6 @@ export function BeneficiaryAppForm() {
 
   const [entryMode, setEntryMode] = useState<'new' | 'update' | null>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
-  const lookupRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<FormStep>(1);
   const [lookupInput, setLookupInput] = useState('');
   const [lookupFeedback, setLookupFeedback] = useState<string | null>(null);
@@ -249,6 +248,27 @@ export function BeneficiaryAppForm() {
 
   useEffect(() => () => stopCamera(), []);
 
+  const focusInWorkspace = (selector: string) => {
+    requestAnimationFrame(() => {
+      const target = workspaceRef.current?.querySelector<HTMLElement>(selector) ?? workspaceRef.current;
+      target?.focus({ preventScroll: true });
+      target?.scrollIntoView({ block: 'start' });
+    });
+  };
+
+  const goToStep = (targetStep: FormStep) => {
+    if (targetStep === step) return;
+    if (step === 4) stopCamera();
+    setFormError(null);
+    setStep(targetStep);
+    focusInWorkspace('[data-step-heading]');
+  };
+
+  const showFormError = (message: string) => {
+    setFormError(message);
+    focusInWorkspace('#cadastro-erro');
+  };
+
   const loadBeneficiary = (b: BeneficiaryRecord) => {
     stopCamera();
     setLoadedRecord(b);
@@ -263,6 +283,7 @@ export function BeneficiaryAppForm() {
     setGpsModeText('');
     setCapturedPhoto(null);
     setStep(1);
+    focusInWorkspace('[data-step-heading]');
   };
 
   const startNewRegistration = () => {
@@ -288,11 +309,7 @@ export function BeneficiaryAppForm() {
       startNewRegistration();
       setEntryMode(mode);
     }
-    requestAnimationFrame(() => {
-      const target = mode === 'update' ? lookupRef.current ?? workspaceRef.current : workspaceRef.current;
-      target?.focus({ preventScroll: true });
-      target?.scrollIntoView({ block: 'start' });
-    });
+    focusInWorkspace(mode === 'update' ? '#buscar-cpf' : '[data-step-heading]');
   };
 
   const handleLookup = (e: React.FormEvent) => {
@@ -607,20 +624,19 @@ export function BeneficiaryAppForm() {
   };
 
   const validateStep = (targetStep: FormStep) => {
-    setFormError(null);
     if (step === 1 && targetStep > 1) {
       if (draft.fullName.trim().length < 4) {
-        setFormError('Informe o nome completo do titular.');
+        showFormError('Informe o nome completo do titular.');
         return;
       }
       if (draft.cpf.replace(/\D/g, '').length < 11) {
-        setFormError('Informe um CPF válido (11 dígitos) para o titular.');
+        showFormError('Informe um CPF válido (11 dígitos) para o titular.');
         return;
       }
       for (let i = 0; i < draft.householdMembers.length; i++) {
         const m = draft.householdMembers[i];
         if (m.fullName.trim().length < 3 || m.cpf.replace(/\D/g, '').length < 11) {
-          setFormError(
+          showFormError(
             `Preencha nome e CPF completo (11 dígitos) da pessoa ${i + 1} vinculada na casa.`
           );
           return;
@@ -629,15 +645,14 @@ export function BeneficiaryAppForm() {
     }
     if (step === 3 && targetStep > 3) {
       if (draft.address.trim().length < 5) {
-        setFormError('Informe o endereço residencial completo.');
+        showFormError('Informe o endereço residencial completo.');
         return;
       }
     }
-    setStep(targetStep);
+    goToStep(targetStep);
   };
 
   const handleSubmitAll = () => {
-    setFormError(null);
     const result = upsertBeneficiary(
       {
         ...draft,
@@ -656,7 +671,7 @@ export function BeneficiaryAppForm() {
       }
     );
     setReceipt({ ...result, perCapita: perCapitaAuto });
-    setStep(5);
+    goToStep(5);
   };
 
   const quickExamples = ['BEN-001', 'BEN-003', 'BEN-011']
@@ -763,8 +778,10 @@ export function BeneficiaryAppForm() {
                     <li key={item.n}>
                       <button
                         type="button"
-                        onClick={() => step <= 4 && validateStep(item.n)}
-                        className="flex w-full items-start gap-2.5 text-left cursor-pointer"
+                        aria-current={isCurrent ? 'step' : undefined}
+                        disabled={!isDone || step === 5}
+                        onClick={() => goToStep(item.n)}
+                        className="flex w-full cursor-pointer items-start gap-2.5 rounded text-left transition-colors hover:bg-white/10 disabled:cursor-default disabled:hover:bg-transparent"
                       >
                         <span
                           className={`font-display flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-extrabold transition-all sm:h-9 sm:w-9 ${
@@ -813,7 +830,7 @@ export function BeneficiaryAppForm() {
           <div className="p-5 sm:p-8">
             {/* CPF Lookup Toolbar */}
             {step === 1 && entryMode === 'update' && (
-              <div className="rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-4 sm:p-5">
+              <div className="citizen-appear rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-4 sm:p-5">
                 <label htmlFor="buscar-cpf" className="mb-2 block font-display text-lg font-bold text-[#0B3B49]">Qual é o CPF cadastrado?</label>
                 <form onSubmit={handleLookup} className="flex flex-col gap-2.5 sm:flex-row">
                   <div className="relative flex-1">
@@ -823,7 +840,6 @@ export function BeneficiaryAppForm() {
                     />
                     <input
                       id="buscar-cpf"
-                      ref={lookupRef}
                       type="text"
                       inputMode="numeric"
                       value={lookupInput}
@@ -880,15 +896,17 @@ export function BeneficiaryAppForm() {
                 </div>
 
                 {lookupFeedback && (
-                  <p role="status" className="mt-2 text-sm font-bold text-[#0E7490]">{lookupFeedback}</p>
+                  <p role="status" className="citizen-appear mt-2 text-sm font-bold text-[#0E7490]">{lookupFeedback}</p>
                 )}
               </div>
             )}
 
             {formError && (
               <div
+                id="cadastro-erro"
                 role="alert"
-                className="mb-5 flex items-center gap-2 rounded-[8px] border border-[#D93829]/40 bg-[#FDE8E6] px-4 py-3 text-sm font-semibold text-[#8E2016]"
+                tabIndex={-1}
+                className="citizen-appear mb-5 flex items-center gap-2 rounded-[8px] border border-[#D93829]/40 bg-[#FDE8E6] px-4 py-3 text-sm font-semibold text-[#8E2016]"
               >
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 {formError}
@@ -899,7 +917,7 @@ export function BeneficiaryAppForm() {
             {step === 1 && canEdit && (
               <div key="mod-1" className="anim-step space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="font-display text-xl font-extrabold text-[#0B3B49]">
+                  <h3 data-step-heading tabIndex={-1} className="font-display text-xl font-extrabold text-[#0B3B49]">
                     1. Dados do titular e pessoas na casa (por CPF)
                   </h3>
                   <span className="rounded-[5px] bg-[#EDF7FA] px-2.5 py-1 text-xs font-bold text-[#0E7490] tabular-nums">
@@ -1174,7 +1192,7 @@ export function BeneficiaryAppForm() {
             {step === 2 && (
               <div key="mod-2" className="anim-step space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="flex items-center gap-2 font-display text-xl font-extrabold text-[#0B3B49]">
+                  <h3 data-step-heading tabIndex={-1} className="flex items-center gap-2 font-display text-xl font-extrabold text-[#0B3B49]">
                     <Briefcase className="h-5 w-5 text-[#0E7490]" />
                     2. Trabalho, renda e autodeclaração de políticas
                   </h3>
@@ -1662,7 +1680,7 @@ export function BeneficiaryAppForm() {
                 <div className="flex items-center justify-between gap-3 border-t border-[#DCE3E8] pt-5">
                   <button
                     type="button"
-                    onClick={() => setStep(1)}
+                    onClick={() => goToStep(1)}
                     className="inline-flex min-h-[48px] items-center gap-2 rounded-[8px] border border-[#C4D0D7] px-5 py-2.5 text-sm font-bold text-[#52646D] hover:bg-[#F4F6F8] cursor-pointer"
                   >
                     <ArrowLeft className="h-4 w-4" />
@@ -1683,7 +1701,7 @@ export function BeneficiaryAppForm() {
             {/* MODULE 3: HOUSING & REAL GPS */}
             {step === 3 && (
               <div key="mod-3" className="anim-step space-y-5">
-                <h3 className="flex items-center gap-2 font-display text-xl font-extrabold text-[#0B3B49]">
+                <h3 data-step-heading tabIndex={-1} className="flex items-center gap-2 font-display text-xl font-extrabold text-[#0B3B49]">
                   <Home className="h-5 w-5 text-[#0E7490]" />
                   3. Dados habitacionais e georreferenciamento
                 </h3>
@@ -1867,7 +1885,7 @@ export function BeneficiaryAppForm() {
                 <div className="flex items-center justify-between gap-3 border-t border-[#DCE3E8] pt-5">
                   <button
                     type="button"
-                    onClick={() => setStep(2)}
+                    onClick={() => goToStep(2)}
                     className="inline-flex min-h-[48px] items-center gap-2 rounded-[8px] border border-[#C4D0D7] px-5 py-2.5 text-sm font-bold text-[#52646D] hover:bg-[#F4F6F8] cursor-pointer"
                   >
                     <ArrowLeft className="h-4 w-4" />
@@ -1888,7 +1906,7 @@ export function BeneficiaryAppForm() {
             {/* MODULE 4: DOCUMENTS, BIOMETRICS & HISTORY */}
             {step === 4 && (
               <div key="mod-4" className="anim-step space-y-5">
-                <h3 className="flex items-center gap-2 font-display text-xl font-extrabold text-[#0B3B49]">
+                <h3 data-step-heading tabIndex={-1} className="flex items-center gap-2 font-display text-xl font-extrabold text-[#0B3B49]">
                   <FileText className="h-5 w-5 text-[#0E7490]" />
                   4. Documentação, identificação e envio
                 </h3>
@@ -2103,10 +2121,7 @@ export function BeneficiaryAppForm() {
                 <div className="flex items-center justify-between gap-3 border-t border-[#DCE3E8] pt-5">
                   <button
                     type="button"
-                    onClick={() => {
-                      stopCamera();
-                      setStep(3);
-                    }}
+                    onClick={() => goToStep(3)}
                     className="inline-flex min-h-[48px] items-center gap-2 rounded-[8px] border border-[#C4D0D7] px-5 py-2.5 text-sm font-bold text-[#52646D] hover:bg-[#F4F6F8] cursor-pointer"
                   >
                     <ArrowLeft className="h-4 w-4" />
@@ -2131,7 +2146,7 @@ export function BeneficiaryAppForm() {
             {step === 5 && receipt && (
               <div key="mod-5" className="anim-step flex flex-col items-center py-6 text-center">
                 <VerifiedSealGraphic />
-                <h3 className="font-display mt-5 text-2xl font-extrabold text-[#0B3B49]">
+                <h3 data-step-heading tabIndex={-1} className="font-display mt-5 text-2xl font-extrabold text-[#0B3B49]">
                   {receipt.queuedOffline
                     ? 'Cadastro guardado na fila offline de campo'
                     : 'Cadastro salvo no ID Maricá'}

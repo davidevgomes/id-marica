@@ -42,6 +42,8 @@ const REGISTRATION_STEPS = [
 export function CitizenPortalLanding() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  const [openQuestions, setOpenQuestions] = useState<string[]>([]);
   const [fontStep, setFontStep] = useState(0);
   const [highContrast, setHighContrast] = useState(false);
 
@@ -53,70 +55,99 @@ export function CitizenPortalLanding() {
     return () => root.classList.remove('a11y-lg', 'a11y-xl', 'a11y-contrast');
   }, [fontStep, highContrast]);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (event.target instanceof Node && !headerRef.current?.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+        menuButton.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [menuOpen]);
+
   return (
     <div id="inicio" className="citizen-portal min-h-screen bg-[#F4F6F8] text-[#11222B]">
       <a href="#cadastro" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[1200] focus:rounded-lg focus:bg-white focus:p-3">
         Ir direto para o cadastro
       </a>
 
-      <header
-        className="relative z-10 bg-[#0B2E38] text-white"
-        onKeyDown={(event) => {
-          if (event.key === 'Escape' && menuOpen) {
-            setMenuOpen(false);
-            menuButton.current?.focus();
-          }
-        }}
-      >
-        <div className="bg-[#072933] text-white">
-          <div className="mx-auto flex min-h-10 max-w-[1240px] items-center justify-between gap-3 px-4 sm:px-6">
-            <p id="portal-accessibility" className="min-w-0 py-1 text-xs leading-snug font-semibold text-[#D8E7EC] sm:text-sm">
-              Acessibilidade do portal do beneficiário
-            </p>
-            <div className="flex shrink-0 items-center gap-1 text-xs font-semibold sm:gap-2" role="group" aria-labelledby="portal-accessibility">
-              <button
-                type="button"
-                className="min-h-10 cursor-pointer rounded px-2 hover:bg-white/15"
-                aria-label="Alternar tamanho do texto"
-                onClick={() => setFontStep((step) => (step + 1) % 3)}
-              >
-                {['A+', 'A++', 'A−'][fontStep]}
-              </button>
-              <button
-                type="button"
-                className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded px-2 hover:bg-white/15"
-                aria-pressed={highContrast}
-                onClick={() => setHighContrast((active) => !active)}
-              >
-                <Contrast aria-hidden="true" className="size-4" />
-                Contraste
-              </button>
-            </div>
+      <div className="bg-[#072933] text-white">
+        <div className="mx-auto flex min-h-10 max-w-[1240px] items-center justify-between gap-3 px-4 sm:px-6">
+          <p id="portal-accessibility" className="min-w-0 py-1 text-xs leading-snug font-semibold text-[#D8E7EC] sm:text-sm">
+            Acessibilidade do portal do beneficiário
+          </p>
+          <div className="flex shrink-0 items-center gap-1 text-xs font-semibold sm:gap-2" role="group" aria-labelledby="portal-accessibility">
+            <button
+              type="button"
+              className="min-h-10 cursor-pointer rounded px-2 hover:bg-white/15"
+              aria-label="Alternar tamanho do texto"
+              onClick={() => setFontStep((step) => (step + 1) % 3)}
+            >
+              {['A+', 'A++', 'A−'][fontStep]}
+            </button>
+            <button
+              type="button"
+              className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded px-2 hover:bg-white/15"
+              aria-pressed={highContrast}
+              onClick={() => setHighContrast((active) => !active)}
+            >
+              <Contrast aria-hidden="true" className="size-4" />
+              Contraste
+            </button>
           </div>
         </div>
-        <div className="mx-auto flex min-h-[72px] max-w-[1240px] flex-wrap items-center justify-between gap-x-4 px-4 py-2 sm:px-6">
-          <a href="#inicio" aria-label="ID Maricá, início">
+      </div>
+
+      <header ref={headerRef} className="sticky top-0 z-50 bg-[#0B2E38] text-white shadow-[0_3px_16px_#07293326]">
+        <div className="relative mx-auto flex h-16 max-w-[1240px] items-center justify-between gap-2 px-4 sm:px-6">
+          <a href="#inicio" aria-label="ID Maricá, início" onClick={() => setMenuOpen(false)}>
             <IdMaricaLogo />
           </a>
-          <button
-            ref={menuButton}
-            type="button"
-            aria-expanded={menuOpen}
-            aria-controls="portal-nav"
-            onClick={() => setMenuOpen((open) => !open)}
-            className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-white/30 px-3 text-sm font-bold text-white hover:bg-white/10 md:hidden"
-          >
-            {menuOpen ? <X aria-hidden="true" className="size-5" /> : <Menu aria-hidden="true" className="size-5" />}
-            {menuOpen ? 'Fechar menu' : 'Menu'}
-          </button>
+
+          <div className="flex items-center gap-3">
+            <a
+              href="#cadastro"
+              onClick={() => setMenuOpen(false)}
+              className="hidden min-h-11 items-center rounded-lg px-3 text-sm font-bold hover:bg-white/10 sm:inline-flex"
+            >
+              Meu cadastro
+            </a>
+            <button
+              ref={menuButton}
+              type="button"
+              aria-expanded={menuOpen}
+              aria-controls="portal-nav"
+              onClick={() => setMenuOpen((open) => !open)}
+              className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-white/30 px-3 text-sm font-bold text-white transition-colors hover:bg-white/10 aria-expanded:bg-white/15"
+            >
+              {menuOpen ? <X aria-hidden="true" className="size-5" /> : <Menu aria-hidden="true" className="size-5" />}
+              Menu
+            </button>
+          </div>
+
           <nav
             id="portal-nav"
             aria-label="Navegação do portal"
-            className={`w-full flex-col gap-1 border-t border-white/20 pt-2 text-base font-bold text-white md:flex md:w-auto md:flex-row md:items-center md:gap-5 md:border-0 md:pt-0 md:text-sm ${menuOpen ? 'mt-2 flex' : 'hidden'} md:mt-0`}
+            data-open={menuOpen}
+            inert={!menuOpen}
+            className="citizen-menu absolute inset-x-0 top-full max-h-[calc(100dvh-4rem)] overflow-y-auto border border-[#DCE3E8] bg-white p-2 text-[#0B3B49] shadow-xl sm:right-6 sm:left-auto sm:w-72 sm:rounded-b-xl"
           >
             {PORTAL_NAV.map(({ href, label }) => (
-              <a key={href} href={href} onClick={() => setMenuOpen(false)} className="inline-flex min-h-11 items-center rounded-lg px-2 hover:bg-white/10 md:px-3">
+              <a key={href} href={href} onClick={() => setMenuOpen(false)} className="flex min-h-11 items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm font-bold transition-colors hover:bg-[#EDF4F6]">
                 {label}
+                <ArrowRight aria-hidden="true" className="size-4 shrink-0 text-[#52646D]" />
               </a>
             ))}
           </nav>
@@ -192,15 +223,30 @@ export function CitizenPortalLanding() {
           <div className="mx-auto grid max-w-[1240px] gap-7 px-4 sm:px-6 lg:grid-cols-[0.68fr_1fr] lg:gap-14">
             <h2 className="citizen-heading font-display font-extrabold text-[#0B3B49]">Dúvidas frequentes</h2>
             <div className="divide-y divide-[#DCE3E8] overflow-hidden rounded-2xl border border-[#DCE3E8] bg-white">
-              {FAQ_ITEMS.map(({ question, answer }) => (
-                <details key={question} className="group">
-                  <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-left font-bold text-[#0B3B49] hover:bg-[#EDF4F6]">
-                    {question}
-                    <ArrowDown aria-hidden="true" className="size-4 shrink-0 group-open:rotate-180" />
-                  </summary>
-                  <p className="px-5 pb-4 text-sm leading-relaxed text-[#405661] sm:text-base">{answer}</p>
-                </details>
-              ))}
+              {FAQ_ITEMS.map(({ question, answer }, index) => {
+                const open = openQuestions.includes(question);
+                return (
+                  <div key={question}>
+                    <button
+                      type="button"
+                      aria-expanded={open}
+                      aria-controls={`portal-answer-${index}`}
+                      onClick={() => setOpenQuestions((questions) =>
+                        questions.includes(question) ? questions.filter((item) => item !== question) : [...questions, question]
+                      )}
+                      className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-4 px-5 py-4 text-left font-bold text-[#0B3B49] transition-colors hover:bg-[#EDF4F6] aria-expanded:bg-[#F4F8FA]"
+                    >
+                      {question}
+                      <ArrowDown aria-hidden="true" className={`size-4 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+                    </button>
+                    <div id={`portal-answer-${index}`} className="accordion-panel" data-open={open} inert={!open}>
+                      <div className="accordion-inner">
+                        <p className="px-5 py-4 text-sm leading-relaxed text-[#405661] sm:text-base">{answer}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>

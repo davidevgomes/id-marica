@@ -239,14 +239,15 @@ export function NearbyUsfMap() {
       }
     });
 
+    const animate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (focusedId) {
       const target = rankedEquipments.find((u) => u.id === focusedId);
-      if (target) map.flyTo(target.coords, 15.5, { duration: 0.6 });
+      if (target) map.flyTo(target.coords, 15.5, { animate, duration: 0.6 });
     } else {
       const pts: [number, number][] = closestFive.map((u) => u.coords);
       if (userCoords && closestFive[0] && closestFive[0].distance < 35000) pts.push(userCoords);
       if (pts.length > 0) {
-        map.fitBounds(L.latLngBounds(pts).pad(0.35), { maxZoom: 14.5, animate: true });
+        map.fitBounds(L.latLngBounds(pts).pad(0.35), { maxZoom: 14.5, animate });
       }
     }
   }, [rankedEquipments, closestFive, userCoords, focusedId]);
@@ -337,6 +338,7 @@ export function NearbyUsfMap() {
               <button
                 key={d.id}
                 type="button"
+                aria-pressed={active}
                 onClick={() => {
                   setUserCoords(null);
                   setFocusedId(null);
@@ -365,6 +367,7 @@ export function NearbyUsfMap() {
             <button
               key={tab.id}
               type="button"
+              aria-pressed={active}
               onClick={() => {
                 setFocusedId(null);
                 setCategory(tab.id);
@@ -390,7 +393,7 @@ export function NearbyUsfMap() {
       </div>
 
       {locMessage && (
-        <div className="rounded-[8px] border border-[#0E7490]/30 bg-[#EDF7FA] px-4 py-3 text-sm font-medium text-[#0B3B49]">
+        <div role="status" className="citizen-appear rounded-[8px] border border-[#0E7490]/30 bg-[#EDF7FA] px-4 py-3 text-sm font-medium text-[#0B3B49]">
           {locMessage}
         </div>
       )}
@@ -404,7 +407,7 @@ export function NearbyUsfMap() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-2.5">
+        <div key={`${category}-${selectedDistrict}`} className="citizen-appear flex flex-col gap-2.5">
           {closestFive.map((item, idx) => {
             const isFocused = focusedId === item.id;
             const st = CATEGORY_STYLE[item.category];
@@ -414,9 +417,10 @@ export function NearbyUsfMap() {
                 key={item.id}
                 onClick={() => setFocusedId(item.id)}
                 role="button"
+                aria-pressed={isFocused}
                 tabIndex={0}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
+                  if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
                     e.preventDefault();
                     setFocusedId(item.id);
                   }

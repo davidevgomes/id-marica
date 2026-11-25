@@ -60,7 +60,7 @@ export function CitizenPortalLanding() {
       </a>
 
       <header
-        className="relative z-10 bg-white"
+        className="relative z-10 bg-[#0B2E38] text-white"
         onKeyDown={(event) => {
           if (event.key === 'Escape' && menuOpen) {
             setMenuOpen(false);
@@ -69,9 +69,11 @@ export function CitizenPortalLanding() {
         }}
       >
         <div className="bg-[#072933] text-white">
-          <div className="mx-auto flex min-h-10 max-w-[1240px] flex-wrap items-center justify-between gap-x-3 px-4 sm:px-6">
-            <p className="py-1 text-xs font-semibold leading-snug">Demonstração <span className="text-[#D8E7EC]">· use dados fictícios</span></p>
-            <div className="flex items-center gap-2 text-xs font-semibold" role="group" aria-label="Acessibilidade">
+          <div className="mx-auto flex min-h-10 max-w-[1240px] items-center justify-between gap-3 px-4 sm:px-6">
+            <p id="portal-accessibility" className="min-w-0 py-1 text-xs leading-snug font-semibold text-[#D8E7EC] sm:text-sm">
+              Acessibilidade do portal do beneficiário
+            </p>
+            <div className="flex shrink-0 items-center gap-1 text-xs font-semibold sm:gap-2" role="group" aria-labelledby="portal-accessibility">
               <button
                 type="button"
                 className="min-h-10 cursor-pointer rounded px-2 hover:bg-white/15"
@@ -94,7 +96,7 @@ export function CitizenPortalLanding() {
         </div>
         <div className="mx-auto flex min-h-[72px] max-w-[1240px] flex-wrap items-center justify-between gap-x-4 px-4 py-2 sm:px-6">
           <a href="#inicio" aria-label="ID Maricá, início">
-            <IdMaricaLogo variant="dark" />
+            <IdMaricaLogo />
           </a>
           <button
             ref={menuButton}
@@ -102,7 +104,7 @@ export function CitizenPortalLanding() {
             aria-expanded={menuOpen}
             aria-controls="portal-nav"
             onClick={() => setMenuOpen((open) => !open)}
-            className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-[#DCE3E8] px-3 text-sm font-bold text-[#0B3B49] hover:bg-[#EDF4F6] md:hidden"
+            className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-white/30 px-3 text-sm font-bold text-white hover:bg-white/10 md:hidden"
           >
             {menuOpen ? <X aria-hidden="true" className="size-5" /> : <Menu aria-hidden="true" className="size-5" />}
             {menuOpen ? 'Fechar menu' : 'Menu'}
@@ -110,10 +112,10 @@ export function CitizenPortalLanding() {
           <nav
             id="portal-nav"
             aria-label="Navegação do portal"
-            className={`w-full flex-col gap-1 border-t border-[#DCE3E8] pt-2 text-base font-bold text-[#0B3B49] md:flex md:w-auto md:flex-row md:items-center md:gap-5 md:border-0 md:pt-0 md:text-sm ${menuOpen ? 'mt-2 flex' : 'hidden'} md:mt-0`}
+            className={`w-full flex-col gap-1 border-t border-white/20 pt-2 text-base font-bold text-white md:flex md:w-auto md:flex-row md:items-center md:gap-5 md:border-0 md:pt-0 md:text-sm ${menuOpen ? 'mt-2 flex' : 'hidden'} md:mt-0`}
           >
             {PORTAL_NAV.map(({ href, label }) => (
-              <a key={href} href={href} onClick={() => setMenuOpen(false)} className="inline-flex min-h-11 items-center rounded-lg px-2 hover:bg-[#EDF4F6] md:px-3">
+              <a key={href} href={href} onClick={() => setMenuOpen(false)} className="inline-flex min-h-11 items-center rounded-lg px-2 hover:bg-white/10 md:px-3">
                 {label}
               </a>
             ))}
@@ -122,7 +124,7 @@ export function CitizenPortalLanding() {
       </header>
 
       <main>
-        <section aria-labelledby="portal-title" className="citizen-hero relative isolate overflow-hidden bg-[#072933] text-white">
+        <section aria-labelledby="portal-title" className="citizen-hero relative isolate flex items-center overflow-hidden border-t border-white/10 bg-[#072933] text-white">
           <img
             src={`${import.meta.env.BASE_URL}hero-marica.jpg`}
             alt=""
@@ -131,16 +133,17 @@ export function CitizenPortalLanding() {
             fetchPriority="high"
             className="citizen-hero-photo absolute inset-0 -z-20 w-full object-cover"
           />
-          <div className="mx-auto max-w-[1240px] px-4 pt-[8.6rem] pb-11 sm:px-6 sm:pt-18 sm:pb-25 lg:pt-22 lg:pb-29">
-            <div className="anim-hero-2 max-w-[36rem]">
-              <p className="mb-3 inline-flex items-center gap-2.5 text-sm font-bold text-[#FFD17A] sm:mb-5">
-                <span aria-hidden="true" className="h-[3px] w-6 rounded-full bg-[#D93829]" />
+          <div className="mx-auto w-full max-w-[1240px] px-4 pt-10 pb-16 sm:px-6 sm:pt-16 sm:pb-24">
+            <div className="anim-hero-2">
+              <p className="mb-4 inline-flex items-center gap-2.5 text-sm font-bold text-[#FFBE49] sm:mb-5">
+                <span aria-hidden="true" className="h-[3px] w-8 shrink-0 bg-[#E89B0C]" />
                 ID Maricá - identidade cidadã
               </p>
               <h1 id="portal-title" className="citizen-title font-display font-extrabold">
-                Seu cadastro social <span className="text-[#FFD17A]">em dia.</span>
+                <span className="block sm:inline">Seu cadastro</span>{' '}
+                em Maricá <span className="block">sempre em dia</span>
               </h1>
-              <p className="mt-3 max-w-[26rem] text-base leading-relaxed text-[#E2EDF0] sm:mt-5 sm:text-lg">
+              <p className="mt-5 max-w-[30rem] text-base leading-relaxed text-[#E2EDF0] sm:text-lg">
                 Faça ou atualize o cadastro da sua família para os benefícios sociais de Maricá.
               </p>
             </div>

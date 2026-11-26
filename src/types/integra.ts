@@ -7,7 +7,8 @@ export type ManagementView =
   | 'consultas'
   | 'indicadores'
   | 'relatorios'
-  | 'lgpd';
+  | 'lgpd'
+  | 'transporte';
 
 export type UserRole = 'ANALISTA_AGREGADO' | 'AUDITOR_LGPD' | 'EQUIPE_CAMPO';
 
@@ -41,7 +42,7 @@ export type WorkRegime =
   | 'SEM_VINCULO'
   | 'APOSENTADO';
 
-export type HousingType = 'PROPRIA' | 'ALUGADA' | 'CEDIDA' | 'FINANCIADA' | 'OUTRA';
+export type HousingType = 'PROPRIA' | 'ALUGADA' | 'TEMPORARIA' | 'CEDIDA' | 'FINANCIADA' | 'OUTRA';
 
 export type IncomeTrend = 'AUMENTO' | 'REDUCAO' | 'ESTAVEL';
 
@@ -201,9 +202,9 @@ export interface DistrictInfo {
   fillColor: string;
   center: [number, number];
   neighborhoods: string[];
-  macroFamilies: number;
-  macroMumbucaTrabalho: number;
-  macroPendingProof: number;
+
+
+
   polygon: [number, number][];
 }
 

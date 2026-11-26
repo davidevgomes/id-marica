@@ -1,5 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { INITIAL_AUDIT_LOGS, SEED_BENEFICIARIES } from '../data/seedBeneficiaries';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import {
   addDaysIso,
   applyCombinedFilters,
@@ -20,8 +19,6 @@ import type {
   UserRole,
 } from '../types/integra';
 
-const STORAGE_KEY = 'id_marica_v3';
-
 export interface RoleProfile {
   role: UserRole;
   label: string;
@@ -40,8 +37,8 @@ export const ROLE_PROFILES: Record<UserRole, RoleProfile> = {
     role: 'ANALISTA_AGREGADO',
     label: 'Gestor / Analista (Dados Agregados)',
     shortLabel: 'Analista (Agregado)',
-    userName: 'Marina Soares',
-    userEmail: 'marina.soares@marica.rj.gov.br',
+    userName: 'Equipe de planejamento',
+    userEmail: '',
     department: 'Planejamento e Inteligência de Dados',
     description:
       'Acessa indicadores, filtros combinados, mapa de calor e dados agregados por bairro. Pontos residenciais exatos e CPFs completos permanecem protegidos pela LGPD.',
@@ -53,8 +50,8 @@ export const ROLE_PROFILES: Record<UserRole, RoleProfile> = {
     role: 'AUDITOR_LGPD',
     label: 'Auditor / Assistente Social (Autorizado LGPD)',
     shortLabel: 'Auditor (LGPD)',
-    userName: 'Dra. Helena Vasconcelos',
-    userEmail: 'helena.vasconcelos@marica.rj.gov.br',
+    userName: 'Equipe de auditoria',
+    userEmail: '',
     department: 'Assistência Social e Governança LGPD',
     description:
       'Acesso nominal autorizado a registros individuais, pontos georreferenciados, histórico longitudinal completo, validação de cadastros e exportação auditada.',
@@ -66,8 +63,8 @@ export const ROLE_PROFILES: Record<UserRole, RoleProfile> = {
     role: 'EQUIPE_CAMPO',
     label: 'Coordenação de Campo (Offline e Validação)',
     shortLabel: 'Equipe de Campo',
-    userName: 'Paulo Henrique Costa',
-    userEmail: 'paulo.campo@marica.rj.gov.br',
+    userName: 'Equipe de campo',
+    userEmail: '',
     department: 'Busca Ativa e Cadastro Territorial',
     description:
       'Gerencia cadastros realizados em campo com conectividade limitada, sincroniza fila offline e acompanha pendências de validação.',
@@ -166,36 +163,12 @@ export function IntegraProvider({ children }: { children: React.ReactNode }) {
   const [managementView, setManagementView] = useState<ManagementView>('mapa');
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
 
-  const [beneficiaries, setBeneficiaries] = useState<BeneficiaryRecord[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw) as BeneficiaryRecord[];
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        }
-      } catch {
-        // fallback to seed
-      }
-    }
-    return SEED_BENEFICIARIES;
-  });
-
+  const [beneficiaries, setBeneficiaries] = useState<BeneficiaryRecord[]>([]);
   const [filters, setFilters] = useState<BeneficiaryFilterState>(DEFAULT_FILTER_STATE);
-  const [selectedBeneficiaryId, setSelectedBeneficiaryId] = useState<string | null>(
-    SEED_BENEFICIARIES[0].id
-  );
+  const [selectedBeneficiaryId, setSelectedBeneficiaryId] = useState<string | null>(null);
   const [offlineQueue, setOfflineQueue] = useState<OfflineQueueItem[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOGS);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(beneficiaries));
-    } catch {
-      // ignore storage quota errors
-    }
-  }, [beneficiaries]);
 
   const pushToast = useCallback(
     (title: string, description: string, tone: ToastMessage['tone'] = 'info') => {
@@ -502,13 +475,12 @@ export function IntegraProvider({ children }: { children: React.ReactNode }) {
   }, [pushToast, recordAuditEvent]);
 
   const resetDemo = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
-    setBeneficiaries(SEED_BENEFICIARIES);
+    setBeneficiaries([]);
     setFilters(DEFAULT_FILTER_STATE);
-    setSelectedBeneficiaryId(SEED_BENEFICIARIES[0].id);
+    setSelectedBeneficiaryId(null);
     setOfflineQueue([]);
-    setAuditLogs(INITIAL_AUDIT_LOGS);
-    pushToast('Base restaurada', 'Dados iniciais de demonstração recarregados.', 'info');
+    setAuditLogs([]);
+    pushToast('Painel reiniciado', 'Os registros da sessão de demonstração foram limpos.', 'info');
   }, [pushToast]);
 
   const activeRoleProfile = authSession ? ROLE_PROFILES[authSession.role] : null;

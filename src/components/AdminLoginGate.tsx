@@ -31,7 +31,7 @@ export function AdminLoginGate() {
         </div>
 
         <div className="p-6 sm:p-9">
-          <p className="text-sm font-bold text-[#226655]">Demonstração com dados fictícios</p>
+          <p className="text-sm font-bold text-[#226655]">Painel de demonstração sem dados cadastrais</p>
           <h2 className="font-display mt-2 text-2xl font-extrabold text-[#0B3B49]">Escolha um perfil</h2>
           <div className="mt-5 grid gap-2.5" role="group" aria-label="Perfis de demonstração">
             {ROLE_ORDER.map((role) => {

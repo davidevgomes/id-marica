@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowRight, Contrast, Menu, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { BeneficiaryAppForm } from './BeneficiaryAppForm';
+import { CitizenUpdates } from './CitizenUpdates';
 import { IdMaricaLogo } from './IdMaricaLogo';
 import { NearbyUsfMap } from './NearbyUsfMap';
 import { PortalFooter } from './PortalFooter';
@@ -8,6 +9,8 @@ import { PwaInstall } from './PwaInstall';
 
 const PORTAL_NAV = [
   { href: '#cadastro', label: 'Cadastro' },
+  { href: '#oportunidades', label: 'Oportunidades' },
+  { href: '#noticias', label: 'Notícias de Maricá' },
   { href: '#como-funciona', label: 'Como funciona' },
   { href: '#apoio', label: 'Onde buscar ajuda' },
   { href: '#duvidas', label: 'Dúvidas' },
@@ -17,15 +20,15 @@ const PORTAL_NAV = [
 const FAQ_ITEMS = [
   {
     question: 'O que preciso para começar?',
-    answer: 'Tenha em mãos o CPF, o endereço e as informações sobre quem mora com você. Nesta demonstração, use dados fictícios ou um dos exemplos do formulário.',
+    answer: 'Tenha em mãos seu CPF, o endereço e as informações sobre quem mora com você. Em caso de aluguel, separe o contrato em PDF.',
   },
   {
     question: 'O que posso atualizar no recadastro?',
     answer: 'Você pode corrigir seu endereço, telefone, renda, trabalho e informações sobre quem mora com você.',
   },
   {
-    question: 'Preciso usar a câmera?',
-    answer: 'A etapa final oferece a opção de validação presencial. Na demonstração, você pode experimentar o fluxo com dados fictícios.',
+    question: 'Onde vejo os dados que cadastrei?',
+    answer: 'Entre com CPF e senha na Área do Munícipe. Lá você pode revisar e baixar suas informações.',
   },
   {
     question: 'Onde posso buscar ajuda presencial?',
@@ -36,7 +39,7 @@ const FAQ_ITEMS = [
 const REGISTRATION_STEPS = [
   ['Separe suas informações', 'Tenha à mão seu CPF, endereço e os dados de quem mora com você.'],
   ['Preencha ou atualize seu cadastro', 'Informe os benefícios e serviços que sua família já utiliza e revise os dados antes de concluir.'],
-  ['Consulte a data no comprovante', 'O ciclo apresentado no protótipo é de três meses. Ao terminar, veja quando atualizar seus dados.'],
+  ['Consulte a data no comprovante', 'Depois de enviar, consulte na Área do Munícipe a data da próxima atualização.'],
 ];
 
 export function CitizenPortalLanding() {
@@ -208,6 +211,8 @@ export function CitizenPortalLanding() {
             </ol>
           </div>
         </section>
+
+        <CitizenUpdates />
 
         <section id="apoio" tabIndex={-1} className="scroll-mt-4 border-b border-[#DCE3E8] bg-white py-12 sm:py-17">
           <div className="mx-auto max-w-[1240px] px-4 sm:px-6">

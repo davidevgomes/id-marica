@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  Bus,
   FileSpreadsheet,
   Filter,
   LogOut,
@@ -38,6 +39,7 @@ export function Header({ onOpenQr }: HeaderProps) {
     count?: number;
   }[] = [
     { id: 'mapa', label: 'Mapa territorial', mobileLabel: 'Mapa', icon: MapIcon },
+    { id: 'transporte', label: 'Transporte', mobileLabel: 'Ônibus', icon: Bus },
     {
       id: 'consultas',
       label: 'Consultas',
@@ -174,7 +176,7 @@ export function Header({ onOpenQr }: HeaderProps) {
         aria-label="Navegação móvel da gestão"
         className="print:hidden fixed inset-x-0 bottom-0 z-50 border-t border-[#DCE3E8] bg-white px-1.5 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] lg:hidden"
       >
-        <div className="grid grid-cols-5 gap-1">
+        <div className="grid grid-cols-6 gap-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = managementView === item.id;

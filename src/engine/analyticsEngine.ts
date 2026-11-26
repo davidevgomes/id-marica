@@ -51,6 +51,7 @@ export const WORK_REGIME_LABELS: Record<WorkRegime, string> = {
 };
 
 export const HOUSING_LABELS: Record<HousingType, string> = {
+  TEMPORARIA: 'Moradia temporária',
   PROPRIA: 'Própria quitada',
   ALUGADA: 'Alugada',
   CEDIDA: 'Cedida / Familiar',

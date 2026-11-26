@@ -107,9 +107,6 @@ export const MARICA_DISTRICTS: DistrictInfo[] = [
       'Centro', 'Mumbuca', 'Flamengo', 'Araçatiba', 'Barra de Maricá',
       'Itapeba', 'Caxito', 'Ubatiba', 'Jacaroá', 'Zacarias',
     ],
-    macroFamilies: 11840,
-    macroMumbucaTrabalho: 2140,
-    macroPendingProof: 620,
     polygon: [],
   },
   {
@@ -123,9 +120,6 @@ export const MARICA_DISTRICTS: DistrictInfo[] = [
       'Ponta Negra', 'Cordeirinho', 'Balneário Bambuí', 'Jaconé',
       'Guaratiba', 'Espraiado', 'Bananal', 'Manoel Ribeiro',
     ],
-    macroFamilies: 6920,
-    macroMumbucaTrabalho: 1090,
-    macroPendingProof: 410,
     polygon: [],
   },
   {
@@ -139,9 +133,6 @@ export const MARICA_DISTRICTS: DistrictInfo[] = [
       'Inoã', 'Spar', 'Calaboca', 'Santa Paula',
       'Chácaras de Inoã', 'Cassorotiba', 'Itaocaia Valley',
     ],
-    macroFamilies: 8450,
-    macroMumbucaTrabalho: 1480,
-    macroPendingProof: 530,
     polygon: [],
   },
   {
@@ -156,9 +147,6 @@ export const MARICA_DISTRICTS: DistrictInfo[] = [
       'Jardim Atlântico Oeste', 'Praia de Itaipuaçu', 'Recanto de Itaipuaçu',
       'Cajueiros', 'Morada das Águias',
     ],
-    macroFamilies: 11260,
-    macroMumbucaTrabalho: 2290,
-    macroPendingProof: 740,
     polygon: [],
   },
   {
@@ -169,9 +157,6 @@ export const MARICA_DISTRICTS: DistrictInfo[] = [
     fillColor: '#5688A8',
     center: [-22.906, -42.872],
     neighborhoods: ['São José do Imbassaí', 'Parque Nanci', 'Ponta Grossa', 'Retiro'],
-    macroFamilies: 5380,
-    macroMumbucaTrabalho: 960,
-    macroPendingProof: 310,
     polygon: [],
   },
 ];

@@ -2,28 +2,23 @@ import {
   AlertTriangle,
   ArrowLeft,
   Briefcase,
-  Camera,
+  KeyRound,
   ChevronRight,
   Cpu,
   Crosshair,
   FileText,
   GraduationCap,
-  History,
   Home,
   Loader2,
   MapPin,
-  Paperclip,
-  Plus,
-  ScanFace,
-  Search,
-  ShieldCheck,
   Trash2,
-  UserPlus,
   Users,
-  WifiOff,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { useIntegra } from '../context/IntegraContext';
+import { useRef, useState } from 'react';
+import { citizenAreaUrl, citizenRequest, CitizenRequestError, type CitizenAccount, type CitizenProfile, type DwellingHolder, type EducationEntry, type EmploymentEntry } from '../data/citizenAccount';
+import { CONTRACT_LIMIT, MIN_CITIZEN_PASSWORD, cpfDigits, isCpfValid } from '../data/citizenValidation';
+import { CitizenHistoryFields } from './CitizenHistoryFields';
+import { IdentityCheck } from './IdentityCheck';
 import {
   GOVERNMENT_POLICIES_CATALOG,
   MARICA_CRAS_UNITS,
@@ -39,10 +34,6 @@ import {
   ECONOMIC_SECTORS,
   EMPLOYMENT_LABELS,
   formatCurrency,
-  formatDateBr,
-  getRegistrationStatus,
-  HOUSING_LABELS,
-  STATUS_LABELS,
   WORK_REGIME_LABELS,
 } from '../engine/analyticsEngine';
 import type {
@@ -55,26 +46,20 @@ import type {
   SocialProgramBenefit,
   WorkRegime,
 } from '../types/integra';
-import {
-  BiometricFrameGraphic,
-  FacialBadgeIcon,
-  HomeGeofenceIcon,
-  VerifiedSealGraphic,
-} from './CivicIcons';
+import { HomeGeofenceIcon } from './CivicIcons';
 import { GeofenceMiniMap } from './GeofenceMiniMap';
 
-type FormStep = 1 | 2 | 3 | 4 | 5;
+type FormStep = 1 | 2 | 3 | 4;
 
 const MODULES: { n: 1 | 2 | 3 | 4; title: string; subtitle: string }[] = [
-  { n: 1, title: 'Dados e moradores', subtitle: 'CPF do titular e da casa' },
-  { n: 2, title: 'Renda e políticas', subtitle: 'Trabalho, IA e autodeclaração' },
-  { n: 3, title: 'Moradia e GPS', subtitle: 'Bairro, aluguel e mapa' },
-  { n: 4, title: 'Documentos e envio', subtitle: 'Anexos, biometria e histórico' },
+  { n: 1, title: 'Dados e dependentes', subtitle: 'Quem mora com você' },
+  { n: 2, title: 'Renda e benefícios', subtitle: 'Trabalho e programas sociais' },
+  { n: 3, title: 'Moradia', subtitle: 'Endereço, titular e contrato' },
+  { n: 4, title: 'Históricos e envio', subtitle: 'Empregos e formação' },
 ];
 
 function formatCpfInput(value: string): string {
-  if (/[a-zA-Z]/.test(value)) return value;
-  const digits = value.replace(/\D/g, '').slice(0, 11);
+  const digits = cpfDigits(value).slice(0, 11);
   if (digits.length <= 3) return digits;
   if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
   if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
@@ -83,11 +68,11 @@ function formatCpfInput(value: string): string {
 
 function defaultDeclaration(): PolicySelfDeclaration {
   return {
-    cadUnicoRegistered: true,
+    cadUnicoRegistered: false,
     nis: '',
-    ubsRegistered: true,
+    ubsRegistered: false,
     ubsName: expandUsfName(MARICA_REAL_USFS[0].name),
-    crasRegistered: true,
+    crasRegistered: false,
     crasName: MARICA_CRAS_UNITS[0].name,
     publicSchoolStudent: false,
     schoolName: MARICA_MUNICIPAL_SCHOOLS[0].name,
@@ -95,9 +80,9 @@ function defaultDeclaration(): PolicySelfDeclaration {
     passaporteUniversitario: false,
     universityName: PASSAPORTE_UNIVERSITIES[0],
     universityCourse: PASSAPORTE_COURSES[0],
-    declaredPolicies: ['Renda Básica de Cidadania (Mumbuca)'],
+    declaredPolicies: [],
     crossCheckStatus: 'AGUARDANDO_CRUZAMENTO',
-    crossCheckNotes: 'Autodeclaração aguardando cruzamento automático com bases oficiais.',
+    crossCheckNotes: '',
   };
 }
 
@@ -107,8 +92,8 @@ function createEmptyDraft() {
     id: undefined as string | undefined,
     cpf: '',
     fullName: '',
-    birthDate: '1990-05-15',
-    gender: 'Feminino' as BeneficiaryRecord['gender'],
+    birthDate: '',
+    gender: 'Prefiro não informar' as BeneficiaryRecord['gender'],
     maritalStatus: 'Solteiro(a)' as BeneficiaryRecord['maritalStatus'],
     education: 'Médio completo' as BeneficiaryRecord['education'],
     phone: '',
@@ -119,42 +104,34 @@ function createEmptyDraft() {
     householdMembers: [] as HouseholdMemberLink[],
     selfDeclaration: defaultDeclaration(),
     profession: '',
-    employmentStatus: 'EMPREGADO' as EmploymentStatus,
-    workRegime: 'CLT' as WorkRegime,
+    employmentStatus: 'DESEMPREGADO' as EmploymentStatus,
+    workRegime: 'SEM_VINCULO' as WorkRegime,
     employerName: '',
-    economicSector: 'Comércio',
-    individualIncome: 1518,
-    householdTotalIncome: 1518,
-    incomeContributorsCount: 1,
+    economicSector: '',
+    individualIncome: 0,
+    householdTotalIncome: 0,
+    incomeContributorsCount: 0,
     otherIncomeSources: 0,
-    socialPrograms: [
-      { name: 'Renda Básica de Cidadania (Mumbuca)', monthlyValue: 460 },
-    ] as SocialProgramBenefit[],
+    socialPrograms: [] as SocialProgramBenefit[],
     address: '',
-    neighborhood: defaultBairro.name,
+    neighborhood: '',
     districtId: defaultBairro.districtId as DistrictId,
-    cep: '24936-000',
+    cep: '',
     coords: defaultBairro.center as [number, number],
-    housingType: 'ALUGADA' as HousingType,
-    rentValue: 800,
-    workLocationBairro: 'Centro',
-    workCoords: [-22.91589, -42.8168] as [number, number] | undefined,
-    documents: {
-      idDocAttached: false,
-      idDocName: undefined,
-      residenceProofAttached: false,
-      residenceProofName: undefined,
-      facialVerified: false,
-      facialConsentLgpd: false,
-      facialVerifiedAt: undefined,
-    } as BeneficiaryRecord['documents'],
-    pendingValidation: false,
+    housingType: '' as HousingType | '',
+    rentValue: 0,
+    workLocationBairro: '',
+    workCoords: undefined as [number, number] | undefined,
+    dwellingType: '' as CitizenProfile['dwellingType'] | '',
+    dwellingHolder: { kind: 'SELF' } as DwellingHolder,
+    employmentHistory: [] as EmploymentEntry[],
+    academicHistory: [] as EducationEntry[],
   };
 }
 
 type BeneficiaryDraft = ReturnType<typeof createEmptyDraft>;
 
-function recordToDraft(b: BeneficiaryRecord): BeneficiaryDraft {
+function recordToDraft(b: CitizenProfile): BeneficiaryDraft {
   const members = (b.householdMembers ?? []).map((m) => ({ ...m }));
   return {
     id: b.id as string | undefined,
@@ -192,23 +169,32 @@ function recordToDraft(b: BeneficiaryRecord): BeneficiaryDraft {
     rentValue: b.rentValue,
     workLocationBairro: b.workLocationBairro ?? '',
     workCoords: b.workCoords ? ([...b.workCoords] as [number, number]) : undefined,
-    documents: { ...b.documents },
-    pendingValidation: b.pendingValidation,
+    dwellingType: b.dwellingType,
+    dwellingHolder: b.dwellingHolder,
+    employmentHistory: b.employmentHistory,
+    academicHistory: b.academicHistory,
   };
 }
 
-export function BeneficiaryAppForm() {
-  const { beneficiaries, offlineQueue, syncOfflineQueue, upsertBeneficiary } = useIntegra();
-
-  const [entryMode, setEntryMode] = useState<'new' | 'update' | null>(null);
+export function BeneficiaryAppForm({
+  account,
+  onSaved,
+}: {
+  account?: CitizenAccount;
+  onSaved?: (account: CitizenAccount) => void;
+}) {
+  const [entryMode, setEntryMode] = useState<'cpf' | 'password' | 'new' | null>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState<FormStep>(1);
   const [lookupInput, setLookupInput] = useState('');
-  const [lookupFeedback, setLookupFeedback] = useState<string | null>(null);
-  const [loadedRecord, setLoadedRecord] = useState<BeneficiaryRecord | null>(null);
-  const [draft, setDraft] = useState<BeneficiaryDraft>(createEmptyDraft);
-  const [offlineFieldMode, setOfflineFieldMode] = useState(false);
-  const [updateNote, setUpdateNote] = useState('');
+  const [password, setPassword] = useState('');
+  const [identity, setIdentity] = useState({ available: false, required: false });
+  const [verified, setVerified] = useState(false);
+  const [today] = useState(() => new Date().toISOString().slice(0, 10));
+  const [busy, setBusy] = useState(false);
+  const [lookupFeedback, setLookupFeedback] = useState('');
+  const [contractFile, setContractFile] = useState<File | null>(null);
+  const [draft, setDraft] = useState(() => account ? recordToDraft(account.profile) : createEmptyDraft());
   const [formError, setFormError] = useState<string | null>(null);
 
   // AI Policy Assistant state
@@ -223,31 +209,6 @@ export function BeneficiaryAppForm() {
   const [gpsNotice, setGpsNotice] = useState<string | null>(null);
   const [gpsModeText, setGpsModeText] = useState<string>('');
 
-  // Facial Biometrics camera state
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [cameraActive, setCameraActive] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [analyzingFace, setAnalyzingFace] = useState(false);
-  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
-
-  const [receipt, setReceipt] = useState<{
-    savedId: string;
-    queuedOffline: boolean;
-    nextDueDate: string;
-    perCapita: number;
-  } | null>(null);
-
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-    setCameraActive(false);
-  };
-
-  useEffect(() => () => stopCamera(), []);
-
   const focusInWorkspace = (selector: string) => {
     requestAnimationFrame(() => {
       const target = workspaceRef.current?.querySelector<HTMLElement>(selector) ?? workspaceRef.current;
@@ -258,7 +219,6 @@ export function BeneficiaryAppForm() {
 
   const goToStep = (targetStep: FormStep) => {
     if (targetStep === step) return;
-    if (step === 4) stopCamera();
     setFormError(null);
     setStep(targetStep);
     focusInWorkspace('[data-step-heading]');
@@ -269,86 +229,58 @@ export function BeneficiaryAppForm() {
     focusInWorkspace('#cadastro-erro');
   };
 
-  const loadBeneficiary = (b: BeneficiaryRecord) => {
-    stopCamera();
-    setLoadedRecord(b);
-    setDraft(recordToDraft(b));
-    setLookupInput(b.cpf);
-    setLookupFeedback(null);
-    setFormError(null);
-    setAiSuggestions(null);
-    setGpsCapturedCoords(null);
-    setGpsAccuracy(null);
-    setGpsNotice(null);
-    setGpsModeText('');
-    setCapturedPhoto(null);
-    setStep(1);
-    focusInWorkspace('[data-step-heading]');
+  const openRegistration = () => {
+    if (entryMode === null) setEntryMode('cpf');
+    focusInWorkspace(entryMode === 'new' ? '[data-step-heading]' : '#buscar-cpf');
   };
 
-  const startNewRegistration = () => {
-    stopCamera();
-    setLoadedRecord(null);
-    setDraft(createEmptyDraft());
-    setLookupInput('');
-    setLookupFeedback(null);
-    setFormError(null);
-    setUpdateNote('');
-    setAiSuggestions(null);
-    setGpsCapturedCoords(null);
-    setGpsAccuracy(null);
-    setGpsNotice(null);
-    setGpsModeText('');
-    setCapturedPhoto(null);
-    setReceipt(null);
-    setStep(1);
-  };
-
-  const openRegistration = (mode: 'new' | 'update') => {
-    if (mode !== entryMode || step === 5) {
-      startNewRegistration();
-      setEntryMode(mode);
-    }
-    focusInWorkspace(mode === 'update' ? '#buscar-cpf' : '[data-step-heading]');
-  };
-
-  const handleLookup = (e: React.FormEvent) => {
-    e.preventDefault();
-    const digits = lookupInput.replace(/\D/g, '');
-    if (digits.length !== 11) {
-      setLookupFeedback('Digite os 11 números do CPF.');
+  const handleLookup = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (busy) return;
+    if (!isCpfValid(lookupInput)) {
+      setLookupFeedback('Informe um CPF válido.');
       return;
     }
-    const found = beneficiaries.find(
-      (b) => b.cpf.replace(/\D/g, '') === digits ||
-        (b.householdMembers ?? []).some((m) => m.cpf.replace(/\D/g, '') === digits)
-    );
-    if (found) {
-      loadBeneficiary(found);
-      setLookupFeedback(`Cadastro localizado. Confira os dados de ${found.fullName} e atualize o que mudou.`);
-    } else {
-      setLookupFeedback('CPF não localizado. Confira o número ou escolha Fazer meu primeiro cadastro.');
+
+    setBusy(true);
+    setLookupFeedback('');
+    try {
+      if (entryMode === 'password') {
+        await citizenRequest('entrar', { cpf: lookupInput, password });
+        window.location.assign(citizenAreaUrl());
+        return;
+      }
+      const result = await citizenRequest<{ registered: boolean; registrationOpen: boolean; biometricAvailable: boolean; biometricRequired: boolean }>('cpf', { cpf: lookupInput });
+      if (result.registered) {
+        setEntryMode('password');
+        focusInWorkspace('#senha-acesso');
+      } else if (result.registrationOpen) {
+        setDraft({ ...createEmptyDraft(), cpf: lookupInput });
+        setIdentity({ available: result.biometricAvailable, required: result.biometricRequired });
+        setVerified(false);
+        setStep(1);
+        setEntryMode('new');
+        focusInWorkspace('[data-step-heading]');
+      } else {
+        setLookupFeedback('Novos cadastros ainda não estão disponíveis.');
+      }
+    } catch (error) {
+      setLookupFeedback(error instanceof Error ? error.message : 'Tente novamente em instantes.');
+    } finally {
+      setBusy(false);
     }
   };
 
-  // Household CPF-linked member handlers
-  const addHouseholdMember = () => {
-    const nextMember: HouseholdMemberLink = {
-      id: `M-${Date.now()}`,
-      fullName: '',
-      cpf: '',
-      relationship: 'Filho(a)',
-      birthDate: '2014-05-10',
-    };
-    setDraft((prev) => {
-      const members = [...prev.householdMembers, nextMember];
-      return {
-        ...prev,
-        householdMembers: members,
-        householdSize: 1 + members.length,
-        dependentsCount: Math.max(prev.dependentsCount, members.length),
-      };
-    });
+  const setMemberCount = (count: number) => {
+    if (!Number.isInteger(count) || count < 0 || count > 30) return;
+    setDraft((current) => ({
+      ...current,
+      householdSize: 1 + count,
+      householdMembers: Array.from({ length: count }, (_, index) => current.householdMembers[index] ?? {
+        id: crypto.randomUUID(), fullName: '', cpf: '', relationship: 'Outro', birthDate: '',
+      }),
+      dependentsCount: Math.min(current.dependentsCount, count),
+    }));
   };
 
   const updateHouseholdMember = <K extends keyof HouseholdMemberLink>(
@@ -387,7 +319,7 @@ export function BeneficiaryAppForm() {
         [key]: value,
         crossCheckStatus: 'AGUARDANDO_CRUZAMENTO',
         crossCheckNotes:
-          'Autodeclaração atualizada; pronta para cruzamento automático com as bases oficiais.',
+          '',
       },
     }));
   };
@@ -411,7 +343,7 @@ export function BeneficiaryAppForm() {
         if (alreadyDeclared) {
           nextPrograms = prev.socialPrograms.filter((p) => p.name !== policyName);
         } else if (!prev.socialPrograms.some((p) => p.name === policyName)) {
-          nextPrograms = [...prev.socialPrograms, { name: policyName, monthlyValue: defaultVal }];
+          nextPrograms = [...prev.socialPrograms, { name: policyName, monthlyValue: 0 }];
         }
       }
 
@@ -464,32 +396,6 @@ export function BeneficiaryAppForm() {
       setAiSuggestions(list);
       setAiLoading(false);
     }, 450);
-  };
-
-  const applyAllAiSuggestions = () => {
-    if (!aiSuggestions) return;
-    setDraft((prev) => {
-      const declaredSet = new Set(prev.selfDeclaration.declaredPolicies);
-      const programs = [...prev.socialPrograms];
-      let hasPass = prev.selfDeclaration.passaporteUniversitario;
-      for (const s of aiSuggestions) {
-        declaredSet.add(s.policy.name);
-        if (s.policy.defaultValue > 0 && !programs.some((p) => p.name === s.policy.name)) {
-          programs.push({ name: s.policy.name, monthlyValue: s.policy.defaultValue });
-        }
-        if (s.policy.name === 'Passaporte Universitário') hasPass = true;
-      }
-      return {
-        ...prev,
-        socialPrograms: programs,
-        selfDeclaration: {
-          ...prev.selfDeclaration,
-          declaredPolicies: Array.from(declaredSet),
-          passaporteUniversitario: hasPass,
-          crossCheckStatus: 'AGUARDANDO_CRUZAMENTO',
-        },
-      };
-    });
   };
 
   const handleNeighborhoodChange = (bairroName: string) => {
@@ -572,141 +478,104 @@ export function BeneficiaryAppForm() {
     );
   };
 
-  const startCamera = async () => {
-    setCameraError(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } },
-        audio: false,
-      });
-      streamRef.current = stream;
-      setCameraActive(true);
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(() => {});
-        }
-      }, 60);
-    } catch {
-      setCameraError('Câmera indisponível ou sem permissão neste aparelho.');
-    }
-  };
-
-  const captureWebcamPhoto = () => {
-    setAnalyzingFace(true);
-    let dataUrl: string | null = null;
-    if (videoRef.current && videoRef.current.videoWidth > 0) {
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.translate(canvas.width, 0);
-        ctx.scale(-1, 1);
-        ctx.drawImage(videoRef.current, 0, 0);
-        dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-      }
-    }
-    setTimeout(() => {
-      stopCamera();
-      setCapturedPhoto(dataUrl);
-      setDraft((prev) => ({
-        ...prev,
-        documents: {
-          ...prev.documents,
-          facialVerified: true,
-          facialConsentLgpd: true,
-          facialVerifiedAt: '2026-11-24',
-        },
-      }));
-      setAnalyzingFace(false);
-    }, 650);
-  };
-
   const validateStep = (targetStep: FormStep) => {
     if (step === 1 && targetStep > 1) {
-      if (draft.fullName.trim().length < 4) {
-        showFormError('Informe o nome completo do titular.');
-        return;
+      if (draft.fullName.trim().length < 4 || !isCpfValid(draft.cpf) || !draft.birthDate || draft.birthDate > today) {
+        return showFormError('Confira o nome completo, o CPF e a data de nascimento do titular.');
       }
-      if (draft.cpf.replace(/\D/g, '').length < 11) {
-        showFormError('Informe um CPF válido (11 dígitos) para o titular.');
-        return;
+      if (!account && (password.length < MIN_CITIZEN_PASSWORD || new TextEncoder().encode(password).length > 72)) {
+        return showFormError('Crie uma senha de pelo menos 10 caracteres e até 72 bytes.');
       }
-      for (let i = 0; i < draft.householdMembers.length; i++) {
-        const m = draft.householdMembers[i];
-        if (m.fullName.trim().length < 3 || m.cpf.replace(/\D/g, '').length < 11) {
-          showFormError(
-            `Preencha nome e CPF completo (11 dígitos) da pessoa ${i + 1} vinculada na casa.`
-          );
-          return;
-        }
+      if (draft.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email)) {
+        return showFormError('Confira o endereço de e-mail informado.');
       }
+      if (draft.householdMembers.some((member) => member.fullName.trim().length < 3 || !isCpfValid(member.cpf) ||
+        !member.birthDate || member.birthDate > today)) {
+        return showFormError('Confira o nome, o CPF e a data de nascimento de cada morador.');
+      }
+      const cpfs = [draft.cpf, ...draft.householdMembers.map((member) => member.cpf)].map(cpfDigits);
+      if (new Set(cpfs).size !== cpfs.length) return showFormError('Cada morador deve ter um CPF diferente.');
     }
     if (step === 3 && targetStep > 3) {
-      if (draft.address.trim().length < 5) {
-        showFormError('Informe o endereço residencial completo.');
-        return;
+      if (draft.address.trim().length < 5 || !draft.neighborhood || !draft.housingType || !draft.dwellingType) {
+        return showFormError('Informe o endereço, o bairro e o tipo de moradia e de imóvel.');
+      }
+      const holder = draft.dwellingHolder;
+      if (holder.kind === 'OTHER' && (holder.name.trim().length < 3 || !isCpfValid(holder.cpf) || holder.relationship.trim().length < 2)) {
+        return showFormError('Confira o nome, o CPF e o vínculo do titular do imóvel.');
+      }
+      if (draft.housingType === 'ALUGADA' && !contractFile && !account?.profile.rentalContractName) {
+        return showFormError('Anexe o contrato de aluguel em PDF.');
       }
     }
     goToStep(targetStep);
   };
 
-  const handleSubmitAll = () => {
-    const result = upsertBeneficiary(
-      {
-        ...draft,
-        householdSize: totalPeopleInHome,
-        householdTotalIncome: Math.max(draft.householdTotalIncome, draft.individualIncome),
-        pendingValidation: !draft.documents.idDocAttached || !draft.documents.residenceProofAttached,
-      },
-      {
-        offlineMode: offlineFieldMode,
-        updatedBy: offlineFieldMode ? 'Equipe de Campo (Offline)' : 'Aplicativo ID Maricá',
-        note:
-          updateNote.trim() ||
-          (loadedRecord
-            ? 'Atualização trimestral com autodeclaração de políticas e CPFs da casa preservados.'
-            : 'Novo cadastro individual vinculado ao CPF no ID Maricá.'),
-      }
-    );
-    setReceipt({ ...result, perCapita: perCapitaAuto });
-    goToStep(5);
+  const handleSubmitAll = async () => {
+    if (busy) return;
+    if (!account && identity.required && !verified) return showFormError('Conclua a verificação facial para criar o cadastro.');
+    if (draft.employmentHistory.some((entry) => !entry.employer.trim() || !entry.role.trim() || !entry.startDate ||
+      (entry.endDate && entry.endDate < entry.startDate)) ||
+      draft.academicHistory.some((entry) => !entry.institution.trim() || !entry.course.trim() || !entry.startDate ||
+      (entry.endDate && entry.endDate < entry.startDate))) {
+      return showFormError('Confira os nomes e as datas dos registros de trabalho e de formação.');
+    }
+
+    setBusy(true);
+    setFormError(null);
+    try {
+      const contract = contractFile && draft.housingType === 'ALUGADA' ? {
+        name: contractFile.name,
+        data: await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = reject;
+          reader.onload = () => resolve(String(reader.result).split(',')[1]);
+          reader.readAsDataURL(contractFile);
+        }),
+      } : null;
+      const saved = await citizenRequest<CitizenAccount>(account ? 'salvar' : 'cadastrar', {
+        profile: draft, contract,
+        ...(account ? { revision: account.revision } : { cpf: draft.cpf, password }),
+      });
+      setPassword('');
+      if (onSaved) onSaved(saved);
+      else window.location.assign(citizenAreaUrl());
+    } catch (error) {
+      if (!account && error instanceof CitizenRequestError && error.status === 403) setVerified(false);
+      showFormError(error instanceof Error ? error.message : 'Não foi possível salvar o cadastro.');
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const quickExamples = ['BEN-001', 'BEN-003', 'BEN-011']
-    .map((id) => beneficiaries.find((b) => b.id === id))
-    .filter((b): b is BeneficiaryRecord => Boolean(b));
-
-  const currentStatus = loadedRecord ? getRegistrationStatus(loadedRecord) : null;
-
-  const canEdit = entryMode === 'new' || Boolean(loadedRecord);
+  const canEdit = Boolean(account) || entryMode === 'new';
+  const fieldClass = 'mt-1 min-h-11 w-full rounded-lg border border-[#C4D0D7] bg-white px-3 text-sm text-[#0B3B49]';
 
   return (
     <div className="mx-auto max-w-[1240px] px-4 pb-9 sm:px-6 sm:pb-13">
-      <div className="grid gap-2 rounded-2xl border border-[#DCE3E8] bg-white p-2.5 shadow-[0_16px_36px_-22px_rgba(7,41,51,0.42)] md:grid-cols-[1.1fr_1fr_1fr]">
-        {([
-          { mode: 'update', icon: FileText, label: 'Atualizar meu cadastro', description: 'Use o CPF cadastrado.' },
-          { mode: 'new', icon: UserPlus, label: 'Fazer meu primeiro cadastro', description: 'Cadastre sua família.' },
-        ] as const).map(({ mode, icon: Icon, label, description }) => (
-          <button
-            key={mode}
-            type="button"
-            aria-pressed={entryMode === mode}
-            aria-controls="cadastro-formulario"
-            aria-labelledby={`cadastro-${mode}-acao`}
-            aria-describedby={`cadastro-${mode}-detalhe`}
-            onClick={() => openRegistration(mode)}
-            className={`citizen-service-card cursor-pointer text-left ${mode === 'update' ? 'citizen-service-primary' : ''}`}
-          >
-            <span className="citizen-service-icon"><Icon aria-hidden="true" className="size-5" /></span>
-            <span className="min-w-0 flex-1">
-              <span id={`cadastro-${mode}-acao`} className="block font-display text-base leading-tight font-extrabold sm:text-lg">{label}</span>
-              <span id={`cadastro-${mode}-detalhe`} className="citizen-service-detail mt-1 block text-sm leading-snug">{description}</span>
-            </span>
-            <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
-          </button>
-        ))}
+      {!account && <div className="grid gap-2 rounded-2xl border border-[#DCE3E8] bg-white p-2.5 shadow-[0_16px_36px_-22px_rgba(7,41,51,0.42)] md:grid-cols-[1.1fr_1fr_1fr]">
+        <button
+          type="button"
+          aria-expanded={entryMode !== null}
+          aria-controls="cadastro-formulario"
+          onClick={openRegistration}
+          className="citizen-service-card citizen-service-primary cursor-pointer text-left"
+        >
+          <span className="citizen-service-icon"><FileText aria-hidden="true" className="size-5" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-display text-base leading-tight font-extrabold sm:text-lg">Atualizar meu cadastro</span>
+            <span className="citizen-service-detail mt-1 block text-sm leading-snug">Use seu CPF para acessar ou criar o cadastro.</span>
+          </span>
+          <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
+        </button>
+        <a href="#oportunidades" className="citizen-service-card">
+          <span className="citizen-service-icon"><Briefcase aria-hidden="true" className="size-5" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-display text-base leading-tight font-extrabold sm:text-lg">Oportunidades para você</span>
+            <span className="citizen-service-detail mt-1 block text-sm leading-snug">Encontre vagas em Maricá e cursos gratuitos.</span>
+          </span>
+          <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
+        </a>
         <a href="#apoio" className="citizen-service-card" aria-labelledby="cadastro-ajuda-acao" aria-describedby="cadastro-ajuda-detalhe">
           <span className="citizen-service-icon citizen-service-icon-help"><MapPin aria-hidden="true" className="size-5" /></span>
           <span className="min-w-0 flex-1">
@@ -715,37 +584,11 @@ export function BeneficiaryAppForm() {
           </span>
           <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
         </a>
-      </div>
+      </div>}
 
-      <div id="cadastro-formulario" ref={workspaceRef} tabIndex={-1} hidden={!entryMode} className="mt-5 scroll-mt-4 rounded-xl">
-        <p className="mb-4 text-sm font-semibold text-[#405661]">Use dados fictícios para testar. O cadastro fica salvo neste navegador.</p>
+      <div id="cadastro-formulario" ref={workspaceRef} tabIndex={-1} hidden={!account && !entryMode} className="mt-5 scroll-mt-4 rounded-xl">
         {canEdit && (
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setOfflineFieldMode((v) => !v)}
-            aria-pressed={offlineFieldMode}
-            className={`inline-flex min-h-[44px] items-center gap-2 rounded-[8px] border px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
-              offlineFieldMode
-                ? 'border-[#E89B0C] bg-[#FEF3DC] text-[#7A4B00]'
-                : 'border-[#DCE3E8] bg-white text-[#52646D] hover:border-[#0B3B49]/40 hover:text-[#0B3B49]'
-            }`}
-          >
-            <WifiOff className="h-4 w-4" />
-            {offlineFieldMode ? 'Modo campo offline ativo' : 'Coleta offline (campo)'}
-          </button>
-
-          {offlineQueue.length > 0 && (
-            <button
-              type="button"
-              onClick={syncOfflineQueue}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-[8px] bg-[#156F48] px-3.5 py-2 text-xs font-extrabold text-white hover:bg-[#115B3B] cursor-pointer"
-            >
-              Sincronizar fila ({offlineQueue.length})
-            </button>
-          )}
-
-          {step <= 4 && (
             <div className="flex items-center gap-3 rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] px-4 py-2.5">
               <div>
                 <div className="text-[11px] font-semibold text-[#52646D]">Progresso</div>
@@ -760,7 +603,6 @@ export function BeneficiaryAppForm() {
                 />
               </div>
             </div>
-          )}
         </div>
         )}
 
@@ -779,7 +621,7 @@ export function BeneficiaryAppForm() {
                       <button
                         type="button"
                         aria-current={isCurrent ? 'step' : undefined}
-                        disabled={!isDone || step === 5}
+                        disabled={!isDone}
                         onClick={() => goToStep(item.n)}
                         className="flex w-full cursor-pointer items-start gap-2.5 rounded text-left transition-colors hover:bg-white/10 disabled:cursor-default disabled:hover:bg-transparent"
                       >
@@ -821,84 +663,51 @@ export function BeneficiaryAppForm() {
                 </p>
               </div>
               <p>
-                Nesta demonstração, o preenchimento é feito com dados de exemplo.
+                Confira as informações antes de enviar. Benefícios informados aqui são autodeclarados.
               </p>
             </div>
           </aside>}
 
           {/* Right Workspace */}
           <div className="p-5 sm:p-8">
-            {/* CPF Lookup Toolbar */}
-            {step === 1 && entryMode === 'update' && (
-              <div className="citizen-appear rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-4 sm:p-5">
-                <label htmlFor="buscar-cpf" className="mb-2 block font-display text-lg font-bold text-[#0B3B49]">Qual é o CPF cadastrado?</label>
-                <form onSubmit={handleLookup} className="flex flex-col gap-2.5 sm:flex-row">
-                  <div className="relative flex-1">
-                    <Search
-                      aria-hidden="true"
-                      className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#52646D]"
-                    />
-                    <input
-                      id="buscar-cpf"
-                      type="text"
-                      inputMode="numeric"
-                      value={lookupInput}
-                      onChange={(e) => setLookupInput(formatCpfInput(e.target.value))}
-                      placeholder="000.000.000-00"
-                      className="min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white py-2.5 pl-10 pr-4 text-sm font-semibold text-[#0B3B49]"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[8px] bg-[#0B3B49] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#072933] cursor-pointer"
-                  >
-                    Buscar cadastro
-                  </button>
-                </form>
-
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="font-medium text-[#52646D]">Exemplos:</span>
-                    {quickExamples.map((ex) => {
-                      const st = getRegistrationStatus(ex);
-                      const active = loadedRecord?.id === ex.id;
-                      return (
-                        <button
-                          key={ex.id}
-                          type="button"
-                          onClick={() => loadBeneficiary(ex)}
-                          className={`rounded-[6px] px-2.5 py-1 font-bold transition-colors cursor-pointer ${
-                            active
-                              ? 'bg-[#0B3B49] text-white'
-                              : 'border border-[#DCE3E8] bg-white text-[#0B3B49] hover:bg-[#EDF4F6]'
-                          }`}
-                        >
-                          {ex.fullName.split(' ')[0]} (
-                          {st === 'VENCIDO' ? 'Vencido' : ex.selfDeclaration?.passaporteUniversitario ? 'Passaporte' : 'Atualizado'})
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {loadedRecord && currentStatus && (
-                    <span
-                      className={`rounded-[5px] px-2.5 py-1 font-bold ${
-                        currentStatus === 'ATUALIZADO'
-                          ? 'bg-[#E6F4ED] text-[#156F48]'
-                          : currentStatus === 'VENCIDO'
-                            ? 'bg-[#FDE8E6] text-[#B52B1E]'
-                            : 'bg-[#FEF3DC] text-[#8A5600]'
-                      }`}
-                    >
-                      {STATUS_LABELS[currentStatus]} (vence {formatDateBr(loadedRecord.nextDueDate)})
-                    </span>
-                  )}
+            {!canEdit && (
+              <form onSubmit={handleLookup} className="citizen-appear mx-auto max-w-xl space-y-4">
+                <div>
+                  <h3 className="font-display text-2xl font-extrabold text-[#0B3B49]">Acesse seu cadastro</h3>
+                  <p className="mt-1 text-sm text-[#52646D]">Digite seu CPF. Se for seu primeiro acesso, você poderá iniciar o cadastro.</p>
                 </div>
-
-                {lookupFeedback && (
-                  <p role="status" className="citizen-appear mt-2 text-sm font-bold text-[#0E7490]">{lookupFeedback}</p>
+                <label className="block text-sm font-bold" htmlFor="buscar-cpf">
+                  CPF
+                  <input
+                    id="buscar-cpf"
+                    className={fieldClass}
+                    inputMode="numeric"
+                    autoComplete="username"
+                    placeholder="000.000.000-00"
+                    value={lookupInput}
+                    onChange={(event) => {
+                      setLookupInput(formatCpfInput(event.target.value));
+                      setEntryMode('cpf');
+                      setPassword('');
+                      setLookupFeedback('');
+                    }}
+                    readOnly={busy}
+                    required
+                  />
+                </label>
+                {entryMode === 'password' && (
+                  <label className="citizen-appear block text-sm font-bold" htmlFor="senha-acesso">
+                    Senha
+                    <input id="senha-acesso" type="password" autoComplete="current-password" className={fieldClass} value={password}
+                      onChange={(event) => setPassword(event.target.value)} maxLength={72} required />
+                  </label>
                 )}
-              </div>
+                {lookupFeedback && <p role="status" className="text-sm font-bold text-[#B52B1E]">{lookupFeedback}</p>}
+                <button type="submit" disabled={busy} className="citizen-primary inline-flex min-h-11 items-center gap-2 rounded-lg px-5 text-sm font-bold disabled:opacity-60">
+                  {busy ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <KeyRound aria-hidden="true" className="size-4" />}
+                  {entryMode === 'password' ? 'Entrar' : 'Continuar com CPF'}
+                </button>
+              </form>
             )}
 
             {formError && (
@@ -949,9 +758,7 @@ export function BeneficiaryAppForm() {
                       id="f-cpf"
                       type="text"
                       value={draft.cpf}
-                      onChange={(e) =>
-                        setDraft((p) => ({ ...p, cpf: formatCpfInput(e.target.value) }))
-                      }
+                      readOnly
                       placeholder="000.000.000-00"
                       className="mt-1 min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3.5 py-2 text-sm font-semibold text-[#0B3B49]"
                     />
@@ -960,7 +767,7 @@ export function BeneficiaryAppForm() {
                   <div>
                     <label htmlFor="f-birth" className="block text-xs font-bold text-[#0B3B49]">
                       Data de nascimento{' '}
-                      <span className="font-semibold text-[#0E7490]">({age} anos)</span>
+                      {draft.birthDate && <span className="font-semibold text-[#0E7490]">({age} anos)</span>}
                     </label>
                     <input
                       id="f-birth"
@@ -1057,7 +864,7 @@ export function BeneficiaryAppForm() {
 
                   <div className="sm:col-span-2">
                     <label htmlFor="f-email" className="block text-xs font-bold text-[#0B3B49]">
-                      E-mail para avisos de atualização
+                      E-mail de contato (opcional)
                     </label>
                     <input
                       id="f-email"
@@ -1070,6 +877,13 @@ export function BeneficiaryAppForm() {
                   </div>
                 </div>
 
+                {!account && <label className="block text-sm font-bold" htmlFor="f-new-password">
+                  Crie sua senha
+                  <input id="f-new-password" type="password" autoComplete="new-password" minLength={MIN_CITIZEN_PASSWORD}
+                    maxLength={72} className={fieldClass} value={password} onChange={(event) => setPassword(event.target.value)} />
+                  <span className="mt-1 block text-xs font-normal text-[#52646D]">Use pelo menos 10 caracteres. Guarde a senha para voltar à Área do Munícipe.</span>
+                </label>}
+
                 {/* CPF-Linked Household Members Section */}
                 <div className="rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-4 sm:p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1079,23 +893,29 @@ export function BeneficiaryAppForm() {
                         Pessoas que moram na casa (vinculadas por CPF)
                       </h4>
                       <p className="mt-0.5 text-xs text-[#52646D]">
-                        Cada integrante do domicílio deve ter seu cadastro vinculado ao próprio CPF.
+                        Informe os moradores e depois indique quantos são seus dependentes.
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={addHouseholdMember}
-                      className="inline-flex min-h-[42px] items-center gap-1.5 rounded-[8px] bg-[#0B3B49] px-3.5 py-2 text-xs font-extrabold text-white hover:bg-[#072933] cursor-pointer"
-                    >
-                      <Plus className="h-4 w-4 text-[#E89B0C]" />
-                      Adicionar pessoa (CPF)
-                    </button>
+                    <label className="text-sm font-bold">
+                      Quantas pessoas moram no imóvel além de você?
+                      <select value={draft.householdMembers.length} onChange={(event) => setMemberCount(Number(event.target.value))} className={fieldClass}>
+                        {Array.from({ length: 31 }, (_, count) => <option key={count} value={count}>{count}</option>)}
+                      </select>
+                    </label>
                   </div>
 
+                  <label className="mt-3 block max-w-xs text-sm font-bold">
+                    Quantos desses moradores são seus dependentes?
+                    <select value={draft.dependentsCount} className={fieldClass} onChange={(event) => {
+                      const dependentsCount = Number(event.target.value);
+                      setDraft((current) => ({ ...current, dependentsCount }));
+                    }}>
+                      {Array.from({ length: draft.householdMembers.length + 1 }, (_, count) => <option key={count} value={count}>{count}</option>)}
+                    </select>
+                  </label>
                   {draft.householdMembers.length === 0 ? (
                     <div className="mt-3 rounded-[8px] border border-dashed border-[#C4D0D7] bg-white p-4 text-center text-xs text-[#52646D]">
-                      Apenas o titular reside no imóvel. Caso morem outras pessoas, clique em{' '}
-                      <strong>Adicionar pessoa (CPF)</strong>.
+                      Você informou que mora sozinho.
                     </div>
                   ) : (
                     <div className="mt-3 space-y-3">
@@ -1598,13 +1418,6 @@ export function BeneficiaryAppForm() {
                         <span className="text-xs font-extrabold text-[#0B3B49]">
                           {aiSuggestions.length} políticas sugeridas pela IA para o seu perfil
                         </span>
-                        <button
-                          type="button"
-                          onClick={applyAllAiSuggestions}
-                          className="rounded-[6px] bg-[#156F48] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#115B3B] cursor-pointer"
-                        >
-                          Marcar todas sugeridas
-                        </button>
                       </div>
                       <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
                         {aiSuggestions.map((s) => (
@@ -1733,6 +1546,7 @@ export function BeneficiaryAppForm() {
                           onChange={(e) => handleNeighborhoodChange(e.target.value)}
                           className="mt-1 min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3 py-2 text-sm font-semibold text-[#0B3B49]"
                         >
+                          <option value="">Selecione seu bairro</option>
                           {OFFICIAL_BAIRROS.map((b) => (
                             <option key={b.name} value={b.name}>
                               {b.name}
@@ -1765,20 +1579,19 @@ export function BeneficiaryAppForm() {
                           id="f-housing"
                           value={draft.housingType}
                           onChange={(e) => {
-                            const val = e.target.value as HousingType;
+                            const val = e.target.value as HousingType | '';
                             setDraft((p) => ({
                               ...p,
                               housingType: val,
-                              rentValue: val === 'ALUGADA' ? p.rentValue || 750 : 0,
+                              rentValue: val === 'ALUGADA' ? p.rentValue : 0,
                             }));
                           }}
                           className="mt-1 min-h-[46px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3 py-2 text-sm text-[#0B3B49]"
                         >
-                          {(Object.keys(HOUSING_LABELS) as HousingType[]).map((k) => (
-                            <option key={k} value={k}>
-                              {HOUSING_LABELS[k]}
-                            </option>
-                          ))}
+                          <option value="">Selecione</option>
+                          <option value="PROPRIA">Moradia própria</option>
+                          <option value="ALUGADA">Aluguel</option>
+                          <option value="TEMPORARIA">Moradia temporária</option>
                         </select>
                       </div>
 
@@ -1804,6 +1617,66 @@ export function BeneficiaryAppForm() {
                         </div>
                       )}
                     </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="text-sm font-bold">
+                        O imóvel é casa ou apartamento?
+                        <select value={draft.dwellingType} className={fieldClass}
+                          onChange={(event) => setDraft((current) => ({ ...current, dwellingType: event.target.value as typeof draft.dwellingType }))}>
+                          <option value="">Selecione</option>
+                          <option value="CASA">Casa</option>
+                          <option value="APARTAMENTO">Apartamento</option>
+                        </select>
+                      </label>
+                      <label className="text-sm font-bold">
+                        Quem é o titular do imóvel ou aluguel?
+                        <select value={draft.dwellingHolder.kind} className={fieldClass}
+                          onChange={(event) => setDraft((current) => ({
+                            ...current, dwellingHolder: event.target.value === 'SELF'
+                              ? { kind: 'SELF' }
+                              : { kind: 'OTHER', name: '', cpf: '', relationship: '' },
+                          }))}>
+                          <option value="SELF">Eu mesmo</option>
+                          <option value="OTHER">Outra pessoa</option>
+                        </select>
+                      </label>
+                    </div>
+                    {draft.dwellingHolder.kind === 'SELF' ? (
+                      <p className="text-sm text-[#52646D]"><strong>Titular do imóvel:</strong> {draft.fullName} · CPF {draft.cpf}</p>
+                    ) : (
+                      <div className="citizen-appear grid gap-3 sm:grid-cols-3">
+                        {([['name', 'Nome do titular'], ['cpf', 'CPF do titular'], ['relationship', 'Vínculo com você']] as const).map(([key, label]) => (
+                          <label key={key} className="text-sm font-bold">
+                            {label}
+                            <input className={fieldClass} value={draft.dwellingHolder.kind === 'OTHER' ? draft.dwellingHolder[key] : ''}
+                              inputMode={key === 'cpf' ? 'numeric' : undefined}
+                              onChange={(event) => {
+                                const value = key === 'cpf' ? formatCpfInput(event.target.value) : event.target.value;
+                                setDraft((current) => current.dwellingHolder.kind === 'OTHER'
+                                  ? { ...current, dwellingHolder: { ...current.dwellingHolder, [key]: value } } : current);
+                              }} />
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    {draft.housingType === 'ALUGADA' && (
+                      <label className="citizen-appear block text-sm font-bold">
+                        Contrato de aluguel (PDF de até 2 MB)
+                        <input type="file" accept=".pdf,application/pdf" className={fieldClass}
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            if (file && (!/\.pdf$/i.test(file.name) || file.size > CONTRACT_LIMIT)) {
+                              event.target.value = '';
+                              showFormError('Escolha um arquivo PDF de até 2 MB.');
+                              return;
+                            }
+                            setContractFile(file ?? null);
+                            setFormError(null);
+                          }} />
+                        {account?.profile.rentalContractName && !contractFile &&
+                          <span className="mt-1 block text-xs font-normal">Já anexado: {account.profile.rentalContractName}</span>}
+                      </label>
+                    )}
 
                     <div>
                       <label htmlFor="f-workb" className="block text-xs font-bold text-[#0B3B49]">
@@ -1896,305 +1769,37 @@ export function BeneficiaryAppForm() {
                     onClick={() => validateStep(4)}
                     className="inline-flex min-h-[50px] items-center gap-2 rounded-[8px] bg-[#D93829] px-7 py-3 text-sm font-extrabold text-white hover:bg-[#B52B1E] cursor-pointer sm:text-base"
                   >
-                    Continuar para Documentos
+                    Continuar para históricos
                     <ChevronRight className="h-5 w-5" />
                   </button>
                 </div>
               </div>
             )}
 
-            {/* MODULE 4: DOCUMENTS, BIOMETRICS & HISTORY */}
             {step === 4 && (
               <div key="mod-4" className="anim-step space-y-5">
-                <h3 data-step-heading tabIndex={-1} className="flex items-center gap-2 font-display text-xl font-extrabold text-[#0B3B49]">
-                  <FileText className="h-5 w-5 text-[#0E7490]" />
-                  4. Documentação, identificação e envio
+                <h3 data-step-heading tabIndex={-1} className="font-display text-xl font-extrabold text-[#0B3B49]">
+                  4. Histórico de empregos e de formação
                 </h3>
-
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <div className="space-y-4">
-                    <div className="space-y-3 rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-4">
-                      <div className="text-sm font-extrabold text-[#0B3B49]">Anexos do cadastro</div>
-
-                      <label className="flex min-h-[54px] cursor-pointer items-center justify-between gap-3 rounded-[8px] border border-dashed border-[#0B3B49]/35 bg-white px-3.5 py-2.5 text-xs hover:bg-[#EDF4F6]">
-                        <span className="flex items-center gap-2 font-semibold text-[#0B3B49]">
-                          <Paperclip className="h-4 w-4 text-[#0E7490]" />
-                          {draft.documents.idDocName || 'Anexar documento de identificação (RG/CNH)'}
-                        </span>
-                        <span className="shrink-0 rounded-[4px] bg-[#EEF3F6] px-2 py-1 font-bold text-[#0B3B49]">
-                          {draft.documents.idDocAttached ? 'Anexado' : 'Escolher'}
-                        </span>
-                        <input
-                          type="file"
-                          accept=".pdf,image/*"
-                          className="sr-only"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (!f) return;
-                            setDraft((p) => ({
-                              ...p,
-                              documents: { ...p.documents, idDocAttached: true, idDocName: f.name },
-                            }));
-                          }}
-                        />
-                      </label>
-
-                      <label className="flex min-h-[54px] cursor-pointer items-center justify-between gap-3 rounded-[8px] border border-dashed border-[#0B3B49]/35 bg-white px-3.5 py-2.5 text-xs hover:bg-[#EDF4F6]">
-                        <span className="flex items-center gap-2 font-semibold text-[#0B3B49]">
-                          <Paperclip className="h-4 w-4 text-[#0E7490]" />
-                          {draft.documents.residenceProofName ||
-                            'Anexar comprovante de residência atual'}
-                        </span>
-                        <span className="shrink-0 rounded-[4px] bg-[#EEF3F6] px-2 py-1 font-bold text-[#0B3B49]">
-                          {draft.documents.residenceProofAttached ? 'Anexado' : 'Escolher'}
-                        </span>
-                        <input
-                          type="file"
-                          accept=".pdf,image/*"
-                          className="sr-only"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (!f) return;
-                            setDraft((p) => ({
-                              ...p,
-                              documents: {
-                                ...p.documents,
-                                residenceProofAttached: true,
-                                residenceProofName: f.name,
-                              },
-                            }));
-                          }}
-                        />
-                      </label>
-                    </div>
-
-                    <div>
-                      <label htmlFor="f-note" className="block text-xs font-bold text-[#0B3B49]">
-                        Observação sobre mudanças neste trimestre (opcional)
-                      </label>
-                      <input
-                        id="f-note"
-                        type="text"
-                        value={updateNote}
-                        onChange={(e) => setUpdateNote(e.target.value)}
-                        placeholder="Ex.: Novo emprego CLT, matrícula na escola ou Passaporte"
-                        className="mt-1 min-h-[44px] w-full rounded-[8px] border border-[#C4D0D7] bg-white px-3.5 py-2 text-sm text-[#0B3B49]"
-                      />
-                    </div>
-
-                    {loadedRecord && loadedRecord.history.length > 0 && (
-                      <div className="rounded-[10px] border border-[#DCE3E8] bg-white p-4">
-                        <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#0B3B49]">
-                          <History className="h-4 w-4 text-[#0E7490]" />
-                          Histórico preservado ({loadedRecord.history.length} ciclos)
-                        </div>
-                        <div className="mt-2.5 space-y-2 text-xs">
-                          {loadedRecord.history.slice(-3).map((h) => (
-                            <div
-                              key={h.id}
-                              className="flex items-center justify-between gap-2 rounded-[6px] bg-[#F8FAFB] px-3 py-2"
-                            >
-                              <div>
-                                <strong className="text-[#0B3B49]">{h.cycleLabel}</strong>{' '}
-                                <span className="text-[#52646D]">
-                                  {WORK_REGIME_LABELS[h.workRegime]}
-                                </span>
-                              </div>
-                              <span className="font-bold text-[#156F48] tabular-nums">
-                                {formatCurrency(h.householdTotalIncome)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Optional Biometrics (LGPD) */}
-                  <div className="flex flex-col justify-between rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-4">
-                    <div>
-                      <div className="mb-2.5 flex items-center justify-between">
-                        <span className="flex items-center gap-2 font-display text-sm font-extrabold text-[#0B3B49]">
-                          <FacialBadgeIcon />
-                          Verificação facial (LGPD)
-                        </span>
-                        {draft.documents.facialVerified && (
-                          <span className="rounded-[4px] bg-[#E6F4ED] px-2 py-0.5 text-[11px] font-bold text-[#156F48]">
-                            Confirmada
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="mb-3 text-xs leading-relaxed text-[#52646D]">
-                        Dado pessoal sensível (Art. 5º, II da LGPD): opcional para quem preferir
-                        conferência presencial no CRAS ou na Unidade de Saúde da Família.
-                      </p>
-
-                      {cameraActive ? (
-                        <div className="relative aspect-[4/3] overflow-hidden rounded-[8px] bg-[#072933]">
-                          <video
-                            ref={videoRef}
-                            autoPlay
-                            playsInline
-                            muted
-                            className="h-full w-full scale-x-[-1] object-cover"
-                          />
-                          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                            <div className="relative h-36 w-28 rounded-full border-2 border-dashed border-[#E89B0C]">
-                              <div className="anim-scanline absolute inset-x-2 top-1/2 h-0.5 bg-[#E89B0C]" />
-                            </div>
-                          </div>
-                        </div>
-                      ) : draft.documents.facialVerified ? (
-                        <div className="flex h-44 flex-col items-center justify-center rounded-[8px] border border-[#156F48]/30 bg-[#E6F4ED] p-4 text-center">
-                          {capturedPhoto ? (
-                            <img
-                              src={capturedPhoto}
-                              alt="Foto facial verificada"
-                              className="h-16 w-16 rounded-full border-2 border-[#156F48] object-cover"
-                            />
-                          ) : (
-                            <ShieldCheck className="h-10 w-10 text-[#156F48]" />
-                          )}
-                          <div className="mt-2 font-display text-sm font-extrabold text-[#0F4D32]">
-                            Biometria verificada com consentimento LGPD
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex h-44 flex-col items-center justify-center rounded-[8px] border border-[#DCE3E8] bg-white p-4 text-center">
-                          <BiometricFrameGraphic scanning={analyzingFace} />
-                          <p className="mt-2 text-xs font-semibold text-[#52646D]">
-                            Autorize o termo abaixo para ativar a câmera frontal
-                          </p>
-                        </div>
-                      )}
-
-                      {cameraError && (
-                        <p className="mt-2 text-xs font-semibold text-[#B52B1E]">{cameraError}</p>
-                      )}
-
-                      <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs text-[#11222B]">
-                        <input
-                          type="checkbox"
-                          checked={draft.documents.facialConsentLgpd}
-                          onChange={(e) =>
-                            setDraft((p) => ({
-                              ...p,
-                              documents: { ...p.documents, facialConsentLgpd: e.target.checked },
-                            }))
-                          }
-                          className="mt-0.5 h-4 w-4 accent-[#0B3B49]"
-                        />
-                        <span>
-                          Autorizo a verificação facial exclusivamente para confirmação de
-                          identidade cadastral (LGPD).
-                        </span>
-                      </label>
-                    </div>
-
-                    <div className="mt-3 flex gap-2">
-                      {!cameraActive ? (
-                        <button
-                          type="button"
-                          disabled={!draft.documents.facialConsentLgpd}
-                          onClick={startCamera}
-                          className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-[8px] bg-[#0B3B49] px-3 py-2 text-xs font-extrabold text-white hover:bg-[#072933] disabled:cursor-not-allowed disabled:bg-[#C4D0D7] cursor-pointer"
-                        >
-                          <Camera className="h-4 w-4 text-[#E89B0C]" />
-                          Abrir câmera
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={captureWebcamPhoto}
-                          disabled={analyzingFace}
-                          className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-[8px] bg-[#156F48] px-3 py-2 text-xs font-extrabold text-white cursor-pointer"
-                        >
-                          <ScanFace className="h-4 w-4" />
-                          {analyzingFace ? 'Validando...' : 'Capturar foto'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-3 border-t border-[#DCE3E8] pt-5">
-                  <button
-                    type="button"
-                    onClick={() => goToStep(3)}
-                    className="inline-flex min-h-[48px] items-center gap-2 rounded-[8px] border border-[#C4D0D7] px-5 py-2.5 text-sm font-bold text-[#52646D] hover:bg-[#F4F6F8] cursor-pointer"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    Voltar
+                <p className="text-sm text-[#52646D]">Você pode informar experiências de trabalho e estudos agora ou acrescentá-los depois na Área do Munícipe.</p>
+                <CitizenHistoryFields title="Histórico de empregos" records={draft.employmentHistory}
+                  emptyRecord={{ employer: '', role: '', startDate: '', endDate: '' }}
+                  nameFields={[{ key: 'employer', label: 'Empregador' }, { key: 'role', label: 'Cargo ou função' }]}
+                  onChange={(employmentHistory) => setDraft((current) => ({ ...current, employmentHistory }))} />
+                <CitizenHistoryFields title="Histórico acadêmico / escolar" records={draft.academicHistory}
+                  emptyRecord={{ institution: '', course: '', startDate: '', endDate: '' }}
+                  nameFields={[{ key: 'institution', label: 'Escola ou instituição' }, { key: 'course', label: 'Curso ou série' }]}
+                  onChange={(academicHistory) => setDraft((current) => ({ ...current, academicHistory }))} />
+                {!account && identity.available && <IdentityCheck cpf={draft.cpf} verified={verified} onVerified={setVerified} />}
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#DCE3E8] pt-5">
+                  <button type="button" onClick={() => goToStep(3)} disabled={busy}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#C4D0D7] px-4 text-sm font-bold text-[#0B3B49]">
+                    <ArrowLeft aria-hidden="true" className="size-4" /> Voltar
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleSubmitAll}
-                    className="inline-flex min-h-[52px] items-center gap-2 rounded-[8px] bg-[#156F48] px-7 py-3 text-sm font-extrabold text-white transition-all hover:bg-[#115B3B] active:scale-[0.98] cursor-pointer sm:text-base"
-                  >
-                    {offlineFieldMode
-                      ? 'Guardar na fila offline'
-                      : loadedRecord
-                        ? 'Salvar atualização no ID Maricá'
-                        : 'Concluir cadastro no ID Maricá'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 5: RECEIPT */}
-            {step === 5 && receipt && (
-              <div key="mod-5" className="anim-step flex flex-col items-center py-6 text-center">
-                <VerifiedSealGraphic />
-                <h3 data-step-heading tabIndex={-1} className="font-display mt-5 text-2xl font-extrabold text-[#0B3B49]">
-                  {receipt.queuedOffline
-                    ? 'Cadastro guardado na fila offline de campo'
-                    : 'Cadastro salvo no ID Maricá'}
-                </h3>
-                <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#52646D]">
-                  Protocolo <strong className="text-[#0B3B49]">{receipt.savedId}</strong> com{' '}
-                  <strong>{totalPeopleInHome} CPF(s) vinculados</strong> no domicílio e{' '}
-                  <strong>{draft.selfDeclaration.declaredPolicies.length} política(s)</strong>{' '}
-                  informada(s) na demonstração.
-                </p>
-
-                <div className="mt-6 grid w-full max-w-xl grid-cols-1 gap-3 rounded-[10px] border border-[#DCE3E8] bg-[#F8FAFB] p-5 text-left sm:grid-cols-3">
-                  <div>
-                    <div className="text-xs text-[#52646D]">Validade (3 meses)</div>
-                    <div className="font-display mt-0.5 text-base font-extrabold text-[#0B3B49] tabular-nums">
-                      Até {formatDateBr(receipt.nextDueDate)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-[#52646D]">Renda per capita</div>
-                    <div className="font-display mt-0.5 text-base font-extrabold text-[#156F48] tabular-nums">
-                      {formatCurrency(receipt.perCapita)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-[#52646D]">Bairro</div>
-                    <div className="font-display mt-0.5 text-base font-extrabold text-[#0B3B49]">
-                      {draft.neighborhood}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex flex-wrap justify-center gap-3">
-                  {receipt.queuedOffline && (
-                    <button
-                      type="button"
-                      onClick={syncOfflineQueue}
-                      className="inline-flex min-h-[46px] items-center gap-2 rounded-[8px] bg-[#156F48] px-5 py-2.5 text-sm font-extrabold text-white hover:bg-[#115B3B] cursor-pointer"
-                    >
-                      Salvar fila neste navegador
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => openRegistration('update')}
-                    className="inline-flex min-h-[46px] items-center gap-2 rounded-[8px] border border-[#0B3B49] bg-white px-5 py-2.5 text-sm font-bold text-[#0B3B49] hover:bg-[#EDF4F6] cursor-pointer"
-                  >
-                    Fazer nova consulta ou atualização
+                  <button type="button" onClick={() => void handleSubmitAll()} disabled={busy}
+                    className="citizen-primary inline-flex min-h-11 items-center gap-2 rounded-lg px-5 text-sm font-bold disabled:opacity-60">
+                    {busy && <Loader2 aria-hidden="true" className="size-4 animate-spin" />}
+                    {busy ? 'Salvando…' : account ? 'Salvar alterações' : 'Criar cadastro'}
                   </button>
                 </div>
               </div>

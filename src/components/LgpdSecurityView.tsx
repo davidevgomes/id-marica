@@ -26,7 +26,7 @@ export function LgpdSecurityView() {
     {
       icon: Fingerprint,
       title: 'Avaliação específica da biometria facial',
-      body: 'O protótipo apresenta o fluxo de câmera e a opção de validação presencial. O uso em produção depende de avaliação específica sobre o tratamento de dados biométricos.',
+      body: 'A validação facial usa o App Datavalid do Serpro quando a integração está habilitada. Para validação presencial, procure o atendimento da Prefeitura.',
     },
     {
       icon: Database,
@@ -111,7 +111,7 @@ export function LgpdSecurityView() {
                 Coleta em campo com conectividade limitada (fila offline)
               </h2>
               <p className="mt-0.5 text-xs text-[#52646D]">
-                A fila simula a coleta em campo. Os registros fictícios podem ser aplicados à base deste navegador.
+                O painel demonstrativo mantém essa fila apenas durante a sessão. Os cadastros do cidadão são enviados online à Área do Munícipe.
               </p>
             </div>
           </div>
